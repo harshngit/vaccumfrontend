@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, UserPlus, Search, Edit2, Trash2, Shield, 
   CheckCircle2, XCircle, X, Save,
-  Mail, Phone
+  Mail, Phone, Eye, EyeOff
 } from "lucide-react";
 import axios from "axios";
 import { PageTransition, Card, Button, Input, useToast, Toast } from "../components/ui";
@@ -27,6 +27,7 @@ export default function UserManagement() {
   const [showModal, setShowModal]   = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast, showToast }        = useToast();
 
   const [formData, setFormData] = useState({
@@ -97,7 +98,7 @@ export default function UserManagement() {
             ? formData.phone_number
             : `+91${formData.phone_number}`;
         }
-        await axios.post(`${API_BASE_URL}/users`, payload, {
+        await axios.post(`${API_BASE_URL}/auth/register`, payload, {
           headers: { Authorization: `Bearer ${token}` }
         });
         showToast("User created successfully!");
@@ -128,6 +129,7 @@ export default function UserManagement() {
   const openAddModal = () => {
     setEditingUser(null);
     setFormData({ first_name: "", last_name: "", email: "", phone_number: "", role: "technician", is_active: true, password: "" });
+    setShowPassword(false);
     setShowModal(true);
   };
 
@@ -142,6 +144,7 @@ export default function UserManagement() {
       is_active:    user.is_active    ?? true,
       password:     "",
     });
+    setShowPassword(false);
     setShowModal(true);
   };
 
@@ -386,14 +389,28 @@ export default function UserManagement() {
 
                   {/* Password — only on create */}
                   {!editingUser && (
-                    <Input
-                      label="Password"
-                      type="password"
-                      value={formData.password}
-                      onChange={e => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Minimum 6 characters"
-                      required
-                    />
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={e => setFormData({ ...formData, password: e.target.value })}
+                          placeholder="Minimum 6 characters"
+                          required
+                          className="w-full px-5 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all pr-12"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+                        >
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
                   )}
 
                   {/* Role dropdown — includes technician */}

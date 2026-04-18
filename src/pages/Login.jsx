@@ -38,7 +38,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white font-sans">
+    <div className="min-h-screen flex bg-white dark:bg-gray-950 font-sans">
       {/* Left side: branding */}
       <div className="hidden lg:flex lg:w-[45%] bg-[#0f172a] p-16 text-white flex-col justify-between relative overflow-hidden">
         <div
@@ -84,19 +84,19 @@ export default function Login() {
       </div>
 
       {/* Right side: login form */}
-      <div className="w-full lg:w-[55%] flex items-center justify-center p-6 bg-gray-50/50">
+      <div className="w-full lg:w-[55%] flex items-center justify-center p-6 bg-gray-50/50 dark:bg-gray-950/50">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-[480px] bg-white rounded-[32px] p-10 shadow-xl shadow-gray-200/50 border border-gray-100"
+          className="w-full max-w-[480px] bg-white dark:bg-gray-900 rounded-[32px] p-10 shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-gray-800"
         >
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-500">Sign in to access your dashboard</p>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome Back</h2>
+            <p className="text-gray-500 dark:text-gray-400">Sign in to access your dashboard</p>
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-gray-100 rounded-2xl p-1 mb-8 gap-1">
+          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 mb-8 gap-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -109,8 +109,8 @@ export default function Login() {
                   }}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
                     activeTab === tab.id
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                   }`}
                 >
                   <Icon size={16} />
@@ -130,7 +130,7 @@ export default function Login() {
                   exit={{ opacity: 0, x: 10 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Email Address
                   </label>
                   <div className="relative">
@@ -140,7 +140,7 @@ export default function Login() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="email@vdti.com"
                       required
-                      className="w-full px-5 py-3.5 pl-12 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      className="w-full px-5 py-3.5 pl-12 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   </div>
@@ -153,7 +153,7 @@ export default function Login() {
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Mobile Number
                   </label>
                   <div className="relative">
@@ -163,7 +163,7 @@ export default function Login() {
                       onChange={(e) => setMobile(e.target.value)}
                       placeholder="9876543210"
                       required
-                      className="w-full px-5 py-3.5 pl-16 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      className="w-full px-5 py-3.5 pl-16 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-500">
                       <Phone size={14} />
@@ -177,7 +177,7 @@ export default function Login() {
 
             {/* Password field — always shown */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
               <div className="relative">
                 <input
                   type={showPass ? "text" : "password"}
@@ -185,12 +185,12 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full px-5 py-3.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all pr-12"
+                  className="w-full px-5 py-3.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
                 >
                   {showPass ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -203,15 +203,15 @@ export default function Login() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
+                <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
                   Remember me
                 </span>
               </label>
               <Link
                 to="/forgot-password"
-                className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
               >
                 Forgot password?
               </Link>
@@ -221,9 +221,9 @@ export default function Login() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-red-600 text-sm bg-red-50 p-4 rounded-xl border border-red-100 flex items-center gap-3"
+                className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30 flex items-center gap-3"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                <div className="w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400" />
                 {error}
               </motion.div>
             )}
