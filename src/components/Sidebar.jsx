@@ -7,7 +7,7 @@ import {
   User, Settings, Moon, Sun, CheckCheck, Trash2, Wifi, WifiOff
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../store/authSlice";
 import { useApp } from "../context/AppContext";
 import { useNotifications } from "../context/NotificationContext";
@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { id: "amc",         label: "AMC Contracts",    icon: ShieldCheck,     path: "/amc"         },
   { id: "attendance",  label: "Attendance",       icon: Clock,           path: "/attendance"  },
   { id: "email",       label: "Email Settings",   icon: Mail,            path: "/email",      adminOnly: true },
-  { id: "activity",    label: "Activity History", icon: FileText,        path: "/activity"    },
+  { id: "activity",    label: "Activity History", icon: FileText,        path: "/activity",    adminOnly: true },
   { id: "users",       label: "Users",            icon: Users,           path: "/users",      adminOnly: true },
 ];
 
@@ -148,9 +148,10 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 export function TopBar({ setSidebarOpen }) {
   const dispatch   = useDispatch();
   const location   = useLocation();
+  const navigate   = useNavigate();
   const { user: currentUser }            = useSelector((state) => state.auth);
   const { darkMode, setDarkMode, searchQuery, setSearchQuery } = useApp();
-  const { notifications, unreadCount, connected, markAllRead, clearAll } = useNotifications();
+  const { notifications, unreadCount, connected, markAllRead, markRead, clearAll } = useNotifications();
 
   const [showUserMenu, setShowUserMenu]   = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
@@ -213,7 +214,7 @@ export function TopBar({ setSidebarOpen }) {
         {/* ── Notification Bell ─────────────────────────── */}
         <div className="relative" ref={notifMenuRef}>
           <button
-            onClick={() => { setShowNotifMenu(p => !p); if (!showNotifMenu && unreadCount > 0) markAllRead(); }}
+            onClick={() => setShowNotifMenu(p => !p)}
             className="relative p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"
             title={connected ? "Connected — live notifications" : "Disconnected"}
           >
@@ -287,24 +288,69 @@ export function TopBar({ setSidebarOpen }) {
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                      {notifications.map(n => (
-                        <motion.div
-                          key={n.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className={`flex items-start gap-3 px-4 py-3 transition hover:bg-gray-50 dark:hover:bg-gray-800/50 ${n.read ? "opacity-60" : ""}`}
-                        >
-                          {/* Coloured dot */}
-                          <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${NOTIF_DOT[n.color] || NOTIF_DOT.gray}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 dark:text-white">{n.title}</p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">{n.message}</p>
-                          </div>
-                          <span className="text-[10px] text-gray-400 flex-shrink-0 mt-0.5">{relativeTime(n.ts)}</span>
-                        </motion.div>
-                      ))}
+                      {notifications.map(n => {
+                        const isClickable = !!n.entity_type && ["job","report","amc"].includes(n.entity_type);
+                        const handleClick = () => {
+                          if (!n.read) markRead(n.id);
+                          const paths = { job: `/jobs/${n.entity_id}`, report: `/reports/${n.entity_id}`, amc: "/amc" };
+                          const path  = isClickable ? paths[n.entity_type] : null;
+                          if (path) { navigate(path); setShowNotifMenu(false); }
+                        };
+                        return (
+                          <motion.div
+                            key={n.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            onClick={handleClick}
+                            className={`flex items-start gap-3 px-4 py-3 transition
+                              ${n.read ? "opacity-60" : "bg-blue-50/30 dark:bg-blue-900/10"}
+                              ${isClickable ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50" : "hover:bg-gray-50/50 dark:hover:bg-gray-800/30"}`}
+                          >
+                            {/* Unread dot or read check */}
+                            <div className="flex-shrink-0 mt-1.5">
+                              {n.read
+                                ? <div className="w-2 h-2 rounded-full bg-gray-200 dark:bg-gray-600" />
+                                : <div className={`w-2 h-2 rounded-full ${NOTIF_DOT[n.color] || NOTIF_DOT.gray}`} />
+                              }
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-semibold leading-snug ${n.read ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-white"}`}>
+                                {n.title}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug line-clamp-2">{n.message}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-gray-400">{relativeTime(n.ts)}</span>
+                                {n.entity_id && <span className="text-[10px] font-mono text-blue-400">{n.entity_id}</span>}
+                              </div>
+                            </div>
+
+                            {/* Per-item mark read button */}
+                            {!n.read && (
+                              <button
+                                onClick={e => { e.stopPropagation(); markRead(n.id); }}
+                                className="flex-shrink-0 mt-1 p-1 text-gray-300 hover:text-blue-500 dark:text-gray-600 dark:hover:text-blue-400 rounded-lg transition"
+                                title="Mark as read"
+                              >
+                                <CheckCheck size={12} />
+                              </button>
+                            )}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   )}
+                </div>
+
+                {/* View all link */}
+                <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2.5">
+                  <button
+                    onClick={() => { navigate("/activity"); setShowNotifMenu(false); }}
+                    className="w-full text-center text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition py-1"
+                  >
+                    View all notifications →
+                  </button>
                 </div>
               </motion.div>
             )}
