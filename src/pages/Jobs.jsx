@@ -17,7 +17,7 @@ const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
 
 const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];
-const CATEGORIES = ["Maintenance", "Repair", "Installation", "Inspection"];
+const CATEGORIES = ["Service", "AMC Visit", "Breakdown", "Installation & Commissioning", "Inspection"];
 
 const STATUS_FLOW  = { Raised: "Assigned", Assigned: "In Progress", "In Progress": "Closed" };
 const STATUS_COLOR = {

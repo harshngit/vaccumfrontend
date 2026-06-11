@@ -79,10 +79,14 @@ export default function Clients() {
   const [detailErpCustomer, setDetailErpCustomer] = useState(null);
 
   useEffect(() => { 
-    if (activeTab === "Local") fetchClients(); 
+    if (activeTab === "Local") {
+      fetchClients(); 
+    } else {
+      fetchErpCustomers();
+    }
   }, [activeTab]);
 
-  const fetchClients = async (searchTerm = "", type = "All", p = 1) => {
+  const fetchClients = async (searchTerm = search, type = filterType, p = page) => {
     if (activeTab !== "Local") return;
     setLoading(true);
     try {
@@ -133,15 +137,16 @@ export default function Clients() {
   }, [erpFilters.page, erpFilters.limit, erpFilters.status, debouncedErpSearch, activeTab, showToast]);
 
   useEffect(() => {
-    if (activeTab === "ERP") fetchErpCustomers();
-  }, [fetchErpCustomers, activeTab]);
+    if (activeTab === "Local") {
+      fetchClients(search, filterType, page);
+    }
+  }, [search, filterType, page, activeTab]);
 
   useEffect(() => {
-    if (activeTab === "Local") {
-      const t = setTimeout(() => fetchClients(search, filterType, page), 400);
-      return () => clearTimeout(t);
+    if (activeTab === "ERP") {
+      fetchErpCustomers();
     }
-  }, [search, filterType, activeTab, page]);
+  }, [fetchErpCustomers, activeTab]);
 
   const openDetail = async (client) => {
     setDetailClient({ ...client, stats: null });
