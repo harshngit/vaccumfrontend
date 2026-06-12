@@ -47,6 +47,7 @@ export default function AMC() {
   const [clients, setClients]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
+  const [search, setSearch] = useState("");
 
   const [modalOpen, setModalOpen]   = useState(false);
   const [editId, setEditId]         = useState(null);
@@ -59,7 +60,7 @@ export default function AMC() {
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => { fetchContracts(); fetchClients(); }, []);
-  useEffect(() => { fetchContracts(); }, [statusFilter]);
+  useEffect(() => { fetchContracts(); }, [statusFilter, search]);
 
   // ── Fetch ─────────────────────────────────────────────────
   const fetchContracts = async () => {
@@ -68,6 +69,7 @@ export default function AMC() {
       const token  = localStorage.getItem("token");
       const params = { limit: 100 };
       if (statusFilter !== "All") params.status = statusFilter;
+      if (search) params.search = search;
       const res = await axios.get(`${API_BASE_URL}/amc`, {
         headers: { Authorization: `Bearer ${token}` }, params,
       });
@@ -83,7 +85,7 @@ export default function AMC() {
     try {
       const token = localStorage.getItem("token");
       const res   = await axios.get(`${API_BASE_URL}/clients`, {
-        headers: { Authorization: `Bearer ${token}` }, params: { limit: 100 },
+        headers: { Authorization: `Bearer ${token}` }, params: { limit: 1000 }
       });
       if (res.data.success) setClients(res.data.data || []);
     } catch {}
@@ -252,8 +254,16 @@ export default function AMC() {
           ))}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-5 flex-wrap">
+        {/* Search + Filter tabs */}
+        <div className="flex flex-wrap gap-2 mb-5 items-center">
+          <div className="relative flex-1 min-w-48 max-w-sm">
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search AMC contracts..."
+              className="w-full pl-3 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+          </div>
           {STATUS_TABS.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition
@@ -509,7 +519,7 @@ export default function AMC() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {!editId && (
-                <Select label="Client" value={form.client_id} onChange={f("client_id")} required className="col-span-2"
+                <Select label="Client" value={form.client_id} onChange={f("client_id")} required className="col-span-2" searchable
                   options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
               )}
               <Input label="Contract Title" value={form.title} onChange={f("title")} required className="col-span-2" />

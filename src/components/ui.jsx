@@ -180,27 +180,42 @@ export function Input({ label, type = "text", value, onChange, placeholder, clas
 }
 
 // ── Select ────────────────────────────────────────────────────────────────
-export function Select({ label, value, onChange, options, className = "", required = false, placeholder = "Select..." }) {
+export function Select({ label, value, onChange, options, className = "", required = false, placeholder = "Select...", searchable = false }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setIsOpen(false);
+        setSearchQuery("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (isOpen && searchable && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen, searchable]);
+
   const selectedOption = options.find(o => (o.value ?? o) === value);
   const displayLabel = selectedOption ? (selectedOption.label ?? selectedOption) : placeholder;
+
+  const filteredOptions = options.filter(option => {
+    const lbl = (option.label ?? option).toLowerCase();
+    return lbl.includes(searchQuery.toLowerCase());
+  });
 
   const handleSelect = (option) => {
     const val = option.value ?? option;
     onChange({ target: { value: val } });
     setIsOpen(false);
+    setSearchQuery("");
   };
 
   return (
@@ -237,11 +252,23 @@ export function Select({ label, value, onChange, options, className = "", requir
             transition={{ duration: 0.1 }}
             className="absolute z-[100] left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
           >
+            {searchable && (
+              <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
             <div className="max-h-60 overflow-y-auto py-1 custom-scrollbar">
-              {options.length === 0 ? (
+              {filteredOptions.length === 0 ? (
                 <div className="px-4 py-3 text-sm text-gray-400 text-center italic">No options</div>
               ) : (
-                options.map((option, idx) => {
+                filteredOptions.map((option, idx) => {
                   const val = option.value ?? option;
                   const lbl = option.label ?? option;
                   const isSelected = val === value;
