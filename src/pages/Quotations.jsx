@@ -5,7 +5,7 @@ import { useApp } from "../context/AppContext";
 import { PageTransition, Card, Badge, Button, Modal, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast, PageLoader } from "../components/ui";
 import axios from "axios";
 
-const API_BASE_URL = 'https://vaccumapi-o4ol.onrender.com/api';
+const API_BASE_URL = 'https://apivdti.asynk.in/api';
 
 export default function Quotations() {
   const { clients, currentUser } = useApp();

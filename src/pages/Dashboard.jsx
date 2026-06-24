@@ -12,7 +12,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell, CartesianGrid
 } from "recharts";
 
-const API_BASE_URL = "https://vaccumapi-o4ol.onrender.com/api";
+const API_BASE_URL = "https://apivdti.asynk.in/api";
 
 const PIE_COLORS = {
   Raised:        "#a855f7",
