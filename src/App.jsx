@@ -14,8 +14,9 @@ import Profile        from "./pages/Profile";
 import SettingsPage   from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
 import Dashboard      from "./pages/Dashboard";
-import Technicians    from "./pages/Technicians";
-import Clients        from "./pages/Clients";
+import Technicians      from "./pages/Technicians";
+import TechnicianDetail from "./pages/TechnicianDetail";
+import Clients          from "./pages/Clients";
 import Jobs           from "./pages/Jobs";
 import JobDetail      from "./pages/JobDetail";
 import Reports        from "./pages/Reports";
@@ -98,8 +99,9 @@ function AppContent() {
         <Route path="/" element={<PL><Dashboard /></PL>} />
 
         {/* Core modules */}
-        <Route path="/technicians" element={<PL><Technicians /></PL>} />
-        <Route path="/clients"     element={<PL><Clients /></PL>} />
+        <Route path="/technicians"     element={<PL><Technicians /></PL>} />
+        <Route path="/technicians/:id" element={<PL><TechnicianDetail /></PL>} />
+        <Route path="/clients"         element={<PL><Clients /></PL>} />
 
         {/* Jobs + detail */}
         <Route path="/jobs"     element={<PL><Jobs /></PL>} />

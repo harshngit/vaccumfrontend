@@ -58,11 +58,13 @@ export default function Clients() {
 
   // Filter clients client-side
   const filteredClients = allClients.filter(c => {
-    const matchesSearch = !search || 
-      c.name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.contact_person?.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone?.includes(search);
+    const q = search.toLowerCase();
+    const matchesSearch = !search ||
+      c.name?.toLowerCase().includes(q) ||
+      c.contact_person?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.phone?.includes(search) ||
+      c.address?.toLowerCase().includes(q);
     const matchesType = filterType === "All" || c.type === filterType;
     return matchesSearch && matchesType;
   });
@@ -250,6 +252,7 @@ export default function Clients() {
                       <tr>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                        <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Address</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                         <th className="px-5 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Contract Value</th>
@@ -282,6 +285,16 @@ export default function Clients() {
                               {c.email && <p className="text-xs text-gray-600 dark:text-gray-300"><Mail size={10} className="inline mr-1" />{c.email}</p>}
                               {c.phone && <p className="text-xs text-gray-600 dark:text-gray-300"><Phone size={10} className="inline mr-1" />{c.phone}</p>}
                             </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            {c.address ? (
+                              <div className="flex items-start gap-1.5 max-w-[200px]">
+                                <MapPin size={12} className="text-gray-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">{c.address}</p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
                           </td>
                           <td className="px-5 py-4">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${TYPE_COLORS[c.type] || "bg-gray-100 text-gray-600"}`}>{c.type}</span>

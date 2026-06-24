@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, ShieldCheck, Calendar, RefreshCw, AlertTriangle,
   X, Building2, DollarSign, Clock, ChevronRight,
-  Loader2, ExternalLink, Pencil, Trash2, Package
+  Loader2, ExternalLink, Pencil, Trash2, Package, MapPin, Search, CheckCircle
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -14,6 +14,124 @@ import {
 } from "../components/ui";
 
 const API_BASE_URL = "https://apivdti.asynk.in/api";
+
+function ClientAutocomplete({ clients, value, onChange, required, className = "" }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef();
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selected = clients.find(c => c.id === value || String(c.id) === String(value));
+  const q = query.toLowerCase();
+  const filtered = clients.filter(c =>
+    c.name?.toLowerCase().includes(q) ||
+    c.address?.toLowerCase().includes(q) ||
+    c.contact_person?.toLowerCase().includes(q) ||
+    c.phone?.includes(query)
+  );
+
+  return (
+    <div className={`relative ${className}`} ref={ref}>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        Client{required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+
+      {/* Trigger */}
+      <div
+        onClick={() => { setOpen(true); setQuery(""); }}
+        className={`w-full px-3 py-2 rounded-xl border cursor-pointer flex items-center justify-between transition-all text-sm ${
+          open
+            ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
+            : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+        } text-gray-900 dark:text-gray-100`}
+      >
+        {selected ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <Building2 size={12} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="truncate font-medium">{selected.name}</span>
+            {selected.address && <span className="text-xs text-gray-400 truncate hidden sm:inline">— {selected.address}</span>}
+          </div>
+        ) : (
+          <span className="text-gray-400">Search or select a client...</span>
+        )}
+        <Search size={14} className="text-gray-400 flex-shrink-0" />
+      </div>
+
+      {/* Dropdown */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.1 }}
+            className="absolute z-[100] left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by name, address, phone..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto py-1 custom-scrollbar">
+              {filtered.length === 0 ? (
+                <div className="px-4 py-4 text-sm text-gray-400 text-center">No clients found</div>
+              ) : (
+                filtered.map((c) => {
+                  const isSelected = String(c.id) === String(value);
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => { onChange(c.id); setOpen(false); setQuery(""); }}
+                      className={`px-4 py-3 cursor-pointer transition-colors ${
+                        isSelected
+                          ? "bg-blue-50 dark:bg-blue-900/20"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                            <Building2 size={14} className="text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium truncate ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-gray-100"}`}>
+                              {c.name}
+                            </p>
+                            {c.address && (
+                              <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
+                                <MapPin size={10} className="flex-shrink-0" /> {c.address}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && <CheckCircle size={14} className="text-blue-500 flex-shrink-0" />}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const STATUS_GRAD = {
   Active:          "from-blue-500   to-blue-700",
@@ -519,8 +637,13 @@ export default function AMC() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {!editId && (
-                <Select label="Client" value={form.client_id} onChange={f("client_id")} required className="col-span-2" searchable
-                  options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
+                <ClientAutocomplete
+                  clients={clients}
+                  value={form.client_id}
+                  onChange={(id) => setForm(p => ({ ...p, client_id: id }))}
+                  required
+                  className="col-span-2"
+                />
               )}
               <Input label="Contract Title" value={form.title} onChange={f("title")} required className="col-span-2" />
               <Input
