@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Briefcase, ArrowRight, Calendar, User, X,
   CheckCircle, Loader2, Upload, MoreVertical, Eye,
-  Camera, ShieldCheck, Download,
+  Camera, ShieldCheck, Download, Building2, MapPin, Search, UserCog,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -46,6 +46,99 @@ const EMPTY_FORM = {
   description: "", scheduled_date: "", amount: "",
   amc_id: "",
 };
+
+function AutocompleteInput({ items, value, onChange, label, required, placeholder, icon: Icon, subField, className = "" }) {
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const containerRef = useRef();
+  const inputRef = useRef();
+
+  useEffect(() => {
+    const handler = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setFocused(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selected = items.find(c => c.id === value || String(c.id) === String(value));
+  const q = query.toLowerCase();
+  const filtered = q
+    ? items.filter(c => c.name?.toLowerCase().includes(q) || (subField && c[subField]?.toLowerCase().includes(q)) || c.phone?.includes(query))
+    : items;
+
+  const handleSelect = (c) => { onChange(c.id); setQuery(c.name); setFocused(false); };
+  const handleClear = () => { onChange(""); setQuery(""); inputRef.current?.focus(); };
+  const displayQuery = focused ? query : (selected ? selected.name : query);
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {label}{required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={displayQuery}
+          onChange={(e) => { setQuery(e.target.value); setFocused(true); if (value) onChange(""); }}
+          onFocus={() => setFocused(true)}
+          placeholder={placeholder || `Search ${label?.toLowerCase()}...`}
+          className={`w-full pl-9 pr-9 py-2 rounded-xl border text-sm transition-all ${
+            focused ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800" : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+          } text-gray-900 dark:text-gray-100 focus:outline-none`}
+        />
+        {(query || value) && (
+          <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+      <AnimatePresence>
+        {focused && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.1 }}
+            className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="max-h-64 overflow-y-auto py-1 custom-scrollbar">
+              {filtered.length === 0 ? (
+                <div className="px-4 py-4 text-sm text-gray-400 text-center">No results found</div>
+              ) : (
+                filtered.map((c) => {
+                  const isSelected = String(c.id) === String(value);
+                  return (
+                    <div key={c.id} onClick={() => handleSelect(c)}
+                      className={`px-4 py-3 cursor-pointer transition-colors ${isSelected ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700/50"}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                            <Icon size={14} className="text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium truncate ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-gray-100"}`}>{c.name}</p>
+                            {subField && c[subField] && (
+                              <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
+                                <MapPin size={10} className="flex-shrink-0" /> {c[subField]}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && <CheckCircle size={14} className="text-blue-500 flex-shrink-0" />}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function ActionMenu({ items, onClose }) {
   const ref = useRef();
@@ -479,10 +572,18 @@ export default function Jobs() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Input label="Job Title" value={form.title} onChange={f("title")} required className="col-span-2" />
-              <Select label="Client" value={form.client_id} onChange={f("client_id")} required searchable
-                options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
-              <Select label="Assign Technician" value={form.technician_id} onChange={f("technician_id")} searchable
-                options={[{ value: "", label: "Not assigned yet" }, ...technicians.map(t => ({ value: t.id, label: t.name }))]} />
+              <AutocompleteInput
+                items={clients} value={form.client_id}
+                onChange={(id) => setForm(p => ({ ...p, client_id: id }))}
+                label="Client" required placeholder="Search clients..."
+                icon={Building2} subField="address"
+              />
+              <AutocompleteInput
+                items={technicians} value={form.technician_id}
+                onChange={(id) => setForm(p => ({ ...p, technician_id: id }))}
+                label="Assign Technician" placeholder="Search technicians..."
+                icon={UserCog} subField="specialization"
+              />
               <Select label="Priority" value={form.priority} onChange={f("priority")} options={PRIORITIES} />
               <Select label="Category" value={form.category} onChange={f("category")} options={CATEGORIES} />
               <DatePicker label="Scheduled Date" value={form.scheduled_date} onChange={f("scheduled_date")} />
