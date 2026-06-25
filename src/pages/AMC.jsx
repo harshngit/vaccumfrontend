@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, ShieldCheck, Calendar, RefreshCw, AlertTriangle,
   X, Building2, DollarSign, Clock, ChevronRight,
-  Loader2, ExternalLink, Pencil, Trash2, Package, MapPin, Search, CheckCircle
+  Loader2, ExternalLink, Pencil, Trash2, Package, MapPin, Search, CheckCircle,
+  MoreVertical, Eye,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -17,23 +18,40 @@ const API_BASE_URL = "https://apivdti.asynk.in/api";
 
 function ClientAutocomplete({ clients, value, onChange, required, className = "" }) {
   const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const ref = useRef();
+  const inputRef = useRef();
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setFocused(false); };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const selected = clients.find(c => c.id === value || String(c.id) === String(value));
   const q = query.toLowerCase();
-  const filtered = clients.filter(c =>
-    c.name?.toLowerCase().includes(q) ||
-    c.address?.toLowerCase().includes(q) ||
-    c.contact_person?.toLowerCase().includes(q) ||
-    c.phone?.includes(query)
-  );
+  const filtered = q
+    ? clients.filter(c =>
+        c.name?.toLowerCase().includes(q) ||
+        c.address?.toLowerCase().includes(q) ||
+        c.contact_person?.toLowerCase().includes(q) ||
+        c.phone?.includes(query)
+      )
+    : clients;
+
+  const handleSelect = (c) => {
+    onChange(c.id);
+    setQuery(c.name);
+    setFocused(false);
+  };
+
+  const handleClear = () => {
+    onChange("");
+    setQuery("");
+    inputRef.current?.focus();
+  };
+
+  const displayQuery = focused ? query : (selected ? selected.name : query);
 
   return (
     <div className={`relative ${className}`} ref={ref}>
@@ -41,52 +59,37 @@ function ClientAutocomplete({ clients, value, onChange, required, className = ""
         Client{required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
-      {/* Trigger */}
-      <div
-        onClick={() => { setOpen(true); setQuery(""); }}
-        className={`w-full px-3 py-2 rounded-xl border cursor-pointer flex items-center justify-between transition-all text-sm ${
-          open
-            ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
-            : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
-        } text-gray-900 dark:text-gray-100`}
-      >
-        {selected ? (
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <Building2 size={12} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <span className="truncate font-medium">{selected.name}</span>
-            {selected.address && <span className="text-xs text-gray-400 truncate hidden sm:inline">— {selected.address}</span>}
-          </div>
-        ) : (
-          <span className="text-gray-400">Search or select a client...</span>
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={displayQuery}
+          onChange={(e) => { setQuery(e.target.value); setFocused(true); if (value) onChange(""); }}
+          onFocus={() => setFocused(true)}
+          placeholder="Type to search clients..."
+          className={`w-full pl-9 pr-9 py-2 rounded-xl border text-sm transition-all ${
+            focused
+              ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
+              : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+          } text-gray-900 dark:text-gray-100 focus:outline-none`}
+        />
+        {(query || value) && (
+          <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <X size={14} />
+          </button>
         )}
-        <Search size={14} className="text-gray-400 flex-shrink-0" />
       </div>
 
-      {/* Dropdown */}
       <AnimatePresence>
-        {open && (
+        {focused && (
           <motion.div
             initial={{ opacity: 0, y: 4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.98 }}
             transition={{ duration: 0.1 }}
-            className="absolute z-[100] left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+            className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
           >
-            <div className="p-2 border-b border-gray-100 dark:border-gray-700">
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  autoFocus
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name, address, phone..."
-                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
             <div className="max-h-64 overflow-y-auto py-1 custom-scrollbar">
               {filtered.length === 0 ? (
                 <div className="px-4 py-4 text-sm text-gray-400 text-center">No clients found</div>
@@ -96,7 +99,7 @@ function ClientAutocomplete({ clients, value, onChange, required, className = ""
                   return (
                     <div
                       key={c.id}
-                      onClick={() => { onChange(c.id); setOpen(false); setQuery(""); }}
+                      onClick={() => handleSelect(c)}
                       className={`px-4 py-3 cursor-pointer transition-colors ${
                         isSelected
                           ? "bg-blue-50 dark:bg-blue-900/20"
@@ -133,6 +136,41 @@ function ClientAutocomplete({ clients, value, onChange, required, className = ""
   );
 }
 
+function ActionMenu({ items, onClose }) {
+  const menuRef = useRef();
+  useEffect(() => {
+    const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) onClose(); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      ref={menuRef}
+      initial={{ opacity: 0, scale: 0.95, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -4 }}
+      transition={{ duration: 0.1 }}
+      className="absolute right-0 top-full mt-1 z-50 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1 overflow-hidden"
+    >
+      {items.map((item) => (
+        <button
+          key={item.label}
+          onClick={item.onClick}
+          className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+            item.danger
+              ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+              : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+          }`}
+        >
+          <item.icon size={14} />
+          {item.label}
+        </button>
+      ))}
+    </motion.div>
+  );
+}
+
 const STATUS_GRAD = {
   Active:          "from-blue-500   to-blue-700",
   "Expiring Soon": "from-orange-500 to-orange-700",
@@ -148,6 +186,7 @@ const EMPTY_FORM = {
   value:                 "",
   renewal_reminder_days: 30,
   services_raw:          "",
+  last_service_date:     "",
   next_service_date:     "",
   visit_count:           "",
   pumps_count:           "",
@@ -157,8 +196,8 @@ const EMPTY_FORM = {
 };
 
 export default function AMC() {
+  const navigate = useNavigate();
   const { currentUser } = useApp();
-  const navigate        = useNavigate();
   const { toast, showToast } = useToast();
 
   const [contracts, setContracts] = useState([]);
@@ -171,16 +210,13 @@ export default function AMC() {
   const [editId, setEditId]         = useState(null);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
-
-  const [detail, setDetail]               = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [menuOpen, setMenuOpen]     = useState(null);
 
   const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => { fetchContracts(); fetchClients(); }, []);
   useEffect(() => { fetchContracts(); }, [statusFilter, search]);
 
-  // ── Fetch ─────────────────────────────────────────────────
   const fetchContracts = async () => {
     setLoading(true);
     try {
@@ -203,118 +239,87 @@ export default function AMC() {
     try {
       const token = localStorage.getItem("token");
       const res   = await axios.get(`${API_BASE_URL}/clients`, {
-        headers: { Authorization: `Bearer ${token}` }, params: { limit: 1000 }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) setClients(res.data.data || []);
     } catch {}
-  };
-
-  const openDetail = async (amc) => {
-    setDetail({ ...amc });
-    setDetailLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res   = await axios.get(`${API_BASE_URL}/amc/${amc.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data.success) setDetail(res.data.data);
-    } catch {
-      showToast("Could not load full details.", "error");
-    } finally {
-      setDetailLoading(false);
-    }
   };
 
   const f = (field) => (e) => {
     const value = e.target.value;
     setForm(prev => {
       const updated = { ...prev, [field]: value };
-      
-      // Auto-calculate total_price when pumps_count or per_pump_price changes
       if (field === 'pumps_count' || field === 'per_pump_price') {
         const pumps = parseFloat(updated.pumps_count) || 0;
         const perPump = parseFloat(updated.per_pump_price) || 0;
         updated.total_price = pumps * perPump;
       }
-      
-      // Auto-calculate value (contract value) when total_price or gst_percent changes
       if (field === 'total_price' || field === 'gst_percent' || field === 'pumps_count' || field === 'per_pump_price') {
         const total = parseFloat(updated.total_price) || 0;
         const gst = parseFloat(updated.gst_percent) || 0;
-        const gstAmount = total * (gst / 100);
-        updated.value = total + gstAmount;
+        updated.value = total + (total * gst / 100);
       }
-      
       return updated;
     });
   };
 
-  const openAdd = () => {
-    setForm(EMPTY_FORM);
-    setEditId(null);
-    setModalOpen(true);
-  };
+  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setModalOpen(true); };
 
   const openEdit = (amc) => {
+    setMenuOpen(null);
     setForm({
-      client_id:             amc.client_id             || "",
-      title:                 amc.title                 || "",
-      po_number:             amc.po_number             || "",
-      start_date:            amc.start_date?.slice(0, 10) || "",
-      end_date:              amc.end_date?.slice(0, 10)   || "",
-      value:                 amc.value                 || "",
-      renewal_reminder_days: amc.renewal_reminder_days || 30,
-      services_raw:          (amc.services || []).join(", "),
-      next_service_date:     amc.next_service_date?.slice(0, 10) || "",
-      visit_count:           amc.visit_count           || "",
-      pumps_count:           amc.pumps_count           || "",
-      per_pump_price:        amc.per_pump_price        || "",
-      total_price:           amc.total_price           || "",
-      gst_percent:           amc.gst_percent           || "",
+      client_id: amc.client_id || "", title: amc.title || "", po_number: amc.po_number || "",
+      start_date: amc.start_date?.slice(0, 10) || "", end_date: amc.end_date?.slice(0, 10) || "",
+      value: amc.value || "", renewal_reminder_days: amc.renewal_reminder_days || 30,
+      services_raw: (amc.services || []).join(", "),
+      last_service_date: amc.last_service_date?.slice(0, 10) || "",
+      next_service_date: amc.next_service_date?.slice(0, 10) || "",
+      visit_count: amc.visit_count || "", pumps_count: amc.pumps_count || "",
+      per_pump_price: amc.per_pump_price || "", total_price: amc.total_price || "",
+      gst_percent: amc.gst_percent || "",
     });
     setEditId(amc.id);
     setModalOpen(true);
   };
 
-  // ── Create / Update ───────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     const token    = localStorage.getItem("token");
-    const services = form.services_raw
-      ? form.services_raw.split(",").map(s => s.trim()).filter(Boolean)
-      : [];
+    const services = form.services_raw ? form.services_raw.split(",").map(s => s.trim()).filter(Boolean) : [];
+
+    if (form.last_service_date) {
+      const start = form.start_date;
+      const end   = form.end_date;
+      if (start && form.last_service_date < start) { showToast("Last service date cannot be before the start date", "error"); setSubmitting(false); return; }
+      if (end && form.last_service_date > end) { showToast("Last service date cannot be after the end date", "error"); setSubmitting(false); return; }
+    }
 
     try {
       const payload = {
-        title:                 form.title.trim(),
-        value:                 parseFloat(form.value),
-        renewal_reminder_days: parseInt(form.renewal_reminder_days),
-        services,
-        po_number:             form.po_number.trim() || undefined,
-        visit_count:           form.visit_count ? parseInt(form.visit_count) : undefined,
-        pumps_count:           form.pumps_count ? parseInt(form.pumps_count) : undefined,
-        per_pump_price:        form.per_pump_price ? parseFloat(form.per_pump_price) : undefined,
-        total_price:           form.total_price ? parseFloat(form.total_price) : undefined,
-        gst_percent:           form.gst_percent ? parseFloat(form.gst_percent) : undefined,
+        title: form.title.trim(), value: parseFloat(form.value),
+        renewal_reminder_days: parseInt(form.renewal_reminder_days), services,
+        po_number: form.po_number.trim() || undefined,
+        visit_count: form.visit_count ? parseInt(form.visit_count) : undefined,
+        pumps_count: form.pumps_count ? parseInt(form.pumps_count) : undefined,
+        per_pump_price: form.per_pump_price ? parseFloat(form.per_pump_price) : undefined,
+        total_price: form.total_price ? parseFloat(form.total_price) : undefined,
+        gst_percent: form.gst_percent ? parseFloat(form.gst_percent) : undefined,
       };
 
       if (editId) {
         if (form.end_date)          payload.end_date          = form.end_date;
+        if (form.last_service_date) payload.last_service_date = form.last_service_date;
         if (form.next_service_date) payload.next_service_date = form.next_service_date;
-        await axios.put(`${API_BASE_URL}/amc/${editId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await axios.put(`${API_BASE_URL}/amc/${editId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
         showToast("AMC contract updated!");
-        if (detail?.id === editId) openDetail({ id: editId });
       } else {
         payload.client_id  = parseInt(form.client_id);
         payload.start_date = form.start_date;
         payload.end_date   = form.end_date;
+        if (form.last_service_date) payload.last_service_date = form.last_service_date;
         if (form.next_service_date) payload.next_service_date = form.next_service_date;
-        await axios.post(`${API_BASE_URL}/amc`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await axios.post(`${API_BASE_URL}/amc`, payload, { headers: { Authorization: `Bearer ${token}` } });
         showToast("AMC contract created! Confirmation email sent to client.");
       }
       setModalOpen(false);
@@ -326,15 +331,11 @@ export default function AMC() {
     }
   };
 
-  // ── Delete ────────────────────────────────────────────────
   const handleDelete = async () => {
-    const token = localStorage.getItem("token");
     try {
-      await axios.delete(`${API_BASE_URL}/amc/${deleteId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_BASE_URL}/amc/${deleteId}`, { headers: { Authorization: `Bearer ${token}` } });
       showToast("AMC contract deleted", "error");
-      if (detail?.id === deleteId) setDetail(null);
       setDeleteId(null);
       fetchContracts();
     } catch (err) {
@@ -359,308 +360,142 @@ export default function AMC() {
         {/* Summary tiles */}
         <div className="grid grid-cols-3 gap-4 mb-5">
           {[
-            { label: "Active",        color: "text-blue-600",   bg: "bg-blue-50   dark:bg-blue-900/20"   },
+            { label: "Active",        color: "text-blue-600",   bg: "bg-blue-50   dark:bg-blue-900/20" },
             { label: "Expiring Soon", color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-900/20" },
-            { label: "Expired",       color: "text-gray-500",   bg: "bg-gray-50   dark:bg-gray-700/50"   },
+            { label: "Expired",       color: "text-gray-500",   bg: "bg-gray-50   dark:bg-gray-700/50" },
           ].map(s => (
             <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center`}>
-              <p className={`text-2xl font-bold ${s.color} font-display`}>
-                {contracts.filter(a => a.status === s.label).length}
-              </p>
+              <p className={`text-2xl font-bold ${s.color} font-display`}>{contracts.filter(a => a.status === s.label).length}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
 
-        {/* Search + Filter tabs */}
+        {/* Search + Filter */}
         <div className="flex flex-wrap gap-2 mb-5 items-center">
           <div className="relative flex-1 min-w-48 max-w-sm">
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search AMC contracts..."
-              className="w-full pl-3 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search AMC contracts..."
+              className="w-full pl-3 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
           </div>
           {STATUS_TABS.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition
-                ${statusFilter === s ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
+              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition ${statusFilter === s ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"}`}
             >{s}</button>
           ))}
         </div>
 
-        {/* List + Detail */}
-        <div className={`flex gap-5 ${detail ? "items-start" : ""}`}>
-
-          {/* Cards */}
-          <div className={detail ? "flex-1 min-w-0" : "w-full"}>
-            {loading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-pulse">
-                    <div className="h-1.5 bg-gray-200 dark:bg-gray-700" />
-                    <div className="p-5 space-y-3">
-                      <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
-                      <div className="h-3 w-1/2 bg-gray-100 dark:bg-gray-800 rounded" />
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl" />
-                        <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+        {/* Cards */}
+        {loading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-pulse">
+                <div className="h-1.5 bg-gray-200 dark:bg-gray-700" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-3 w-1/2 bg-gray-100 dark:bg-gray-800 rounded" />
+                  <div className="grid grid-cols-2 gap-3"><div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl" /><div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-xl" /></div>
+                </div>
               </div>
-            ) : contracts.length === 0 ? (
-              <EmptyState icon={ShieldCheck} title="No AMC contracts" description="Create annual maintenance contracts for clients." />
-            ) : (
-              <div className={`grid gap-4 ${detail ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3"}`}>
-                {contracts.map((amc, i) => {
-                  const daysLeft = amc.days_left ?? Math.ceil((new Date(amc.end_date) - new Date()) / 86400000);
-                  return (
-                    <motion.div key={amc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                      <Card
-                        hover
-                        className={`overflow-hidden cursor-pointer ${detail?.id === amc.id ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}
-                        onClick={() => openDetail(amc)}
-                      >
-                        <div className={`h-1.5 bg-gradient-to-r ${STATUS_GRAD[amc.status] || STATUS_GRAD.Expired}`} />
-                        <div className="p-5">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <p className="font-mono text-xs text-blue-500">{amc.id}</p>
-                              <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">{amc.title}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{amc.client_name}</p>
-                            </div>
-                            <Badge label={amc.status} />
-                          </div>
-
-                          {/* PO Number badge */}
-                          {amc.po_number && (
-                            <div className="mb-3">
-                              <span className="inline-flex items-center gap-1 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-full font-medium">
-                                <Package size={11} /> {amc.po_number}
-                              </span>
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-3 mb-4">
-                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                              <p className="text-xs text-gray-400">Contract Value</p>
-                              <p className="font-bold text-blue-600 dark:text-blue-400 text-base">₹{Number(amc.value).toLocaleString()}</p>
-                            </div>
-                            <div className={`rounded-xl p-3 ${daysLeft < 60 && daysLeft > 0 ? "bg-orange-50 dark:bg-orange-900/20" : "bg-gray-50 dark:bg-gray-700/50"}`}>
-                              <p className="text-xs text-gray-400">Days Left</p>
-                              <p className={`font-bold text-base ${daysLeft < 60 && daysLeft > 0 ? "text-orange-600" : daysLeft <= 0 ? "text-red-500" : "text-gray-800 dark:text-gray-200"}`}>
-                                {daysLeft > 0 ? daysLeft : "Expired"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
-                            <div className="flex items-center gap-2">
-                              <Calendar size={12} />
-                              {amc.start_date?.slice(0, 10)} → {amc.end_date?.slice(0, 10)}
-                            </div>
-                            {amc.next_service_date && (
-                              <div className="flex items-center gap-2">
-                                <RefreshCw size={12} />
-                                Next service: {amc.next_service_date.slice(0, 10)}
-                              </div>
-                            )}
-                            {amc.status === "Expiring Soon" && (
-                              <div className="flex items-center gap-2 text-orange-500 font-semibold">
-                                <AlertTriangle size={12} /> Renewal reminder: {amc.renewal_reminder_days}d before
-                              </div>
-                            )}
-                          </div>
-
-                          {amc.services?.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                              <div className="flex flex-wrap gap-1">
-                                {amc.services.slice(0, 3).map(s => (
-                                  <span key={s} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full">{s}</span>
-                                ))}
-                                {amc.services.length > 3 && <span className="text-xs text-gray-400">+{amc.services.length - 3} more</span>}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+            ))}
           </div>
-
-          {/* Detail panel */}
-          <AnimatePresence>
-            {detail && (
-              <motion.div
-                key="amc-detail"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 40 }}
-                transition={{ type: "spring", damping: 28, stiffness: 280 }}
-                className="w-full lg:w-96 flex-shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg overflow-hidden sticky top-4"
-              >
-                <div className={`h-1.5 bg-gradient-to-r ${STATUS_GRAD[detail.status] || STATUS_GRAD.Expired}`} />
-                <div className="p-5 border-b border-gray-100 dark:border-gray-700">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-mono text-xs text-blue-500 font-bold">{detail.id}</p>
-                      <p className="font-bold text-gray-900 dark:text-white mt-0.5">{detail.title}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{detail.client_name}</p>
-                    </div>
-                    <button onClick={() => setDetail(null)} className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg transition">
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 mt-3 flex-wrap">
-                    <Badge label={detail.status} />
-                    {detail.po_number && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded-full">
-                        <Package size={10} /> {detail.po_number}
-                      </span>
-                    )}
-                    {detailLoading && <Loader2 size={12} className="animate-spin text-gray-400" />}
-                  </div>
-                </div>
-
-                <div className="p-5 space-y-5 max-h-[calc(100vh-220px)] overflow-y-auto">
-                  {/* Value + days */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Value</p>
-                      <p className="font-bold text-blue-600 dark:text-blue-400">₹{Number(detail.value || 0).toLocaleString()}</p>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Days Left</p>
-                      <p className={`font-bold ${(detail.days_left ?? 0) < 60 ? "text-orange-600" : "text-gray-800 dark:text-white"}`}>
-                        {detail.days_left ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Additional fields */}
-                  {(detail.visit_count || detail.pumps_count || detail.per_pump_price || detail.total_price || detail.gst_percent) && (
-                    <div className="grid grid-cols-2 gap-3">
-                      {detail.visit_count !== undefined && detail.visit_count !== null && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Visit Count</p>
-                          <p className="font-bold text-gray-800 dark:text-white">{detail.visit_count}</p>
+        ) : contracts.length === 0 ? (
+          <EmptyState icon={ShieldCheck} title="No AMC contracts" description="Create annual maintenance contracts for clients." />
+        ) : (
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+            {contracts.map((amc, i) => {
+              const daysLeft = amc.days_left ?? Math.ceil((new Date(amc.end_date) - new Date()) / 86400000);
+              return (
+                <motion.div key={amc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                  <Card hover className="overflow-hidden cursor-pointer" onClick={() => navigate(`/amc/${amc.id}`)}>
+                    <div className={`h-1.5 bg-gradient-to-r ${STATUS_GRAD[amc.status] || STATUS_GRAD.Expired}`} />
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-mono text-xs text-blue-500">{amc.id}</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5 truncate">{amc.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{amc.client_name}</p>
                         </div>
-                      )}
-                      {detail.pumps_count !== undefined && detail.pumps_count !== null && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Pumps Count</p>
-                          <p className="font-bold text-gray-800 dark:text-white">{detail.pumps_count}</p>
+                        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <Badge label={amc.status} />
+                          {canEdit && (
+                            <div className="relative">
+                              <button onClick={() => setMenuOpen(menuOpen === amc.id ? null : amc.id)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                                <MoreVertical size={16} />
+                              </button>
+                              <AnimatePresence>
+                                {menuOpen === amc.id && (
+                                  <ActionMenu onClose={() => setMenuOpen(null)} items={[
+                                    { label: "View", icon: Eye, onClick: () => { setMenuOpen(null); navigate(`/amc/${amc.id}`); } },
+                                    { label: "Edit", icon: Pencil, onClick: () => openEdit(amc) },
+                                    { label: "Delete", icon: Trash2, danger: true, onClick: () => { setMenuOpen(null); setDeleteId(amc.id); } },
+                                  ]} />
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {detail.per_pump_price !== undefined && detail.per_pump_price !== null && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Per Pump Price</p>
-                          <p className="font-bold text-gray-800 dark:text-white">₹{Number(detail.per_pump_price || 0).toLocaleString()}</p>
-                        </div>
-                      )}
-                      {detail.total_price !== undefined && detail.total_price !== null && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
-                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Total Price</p>
-                          <p className="font-bold text-gray-800 dark:text-white">₹{Number(detail.total_price || 0).toLocaleString()}</p>
-                        </div>
-                      )}
-                      {detail.gst_percent !== undefined && detail.gst_percent !== null && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 col-span-2">
-                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">GST Percent</p>
-                          <p className="font-bold text-gray-800 dark:text-white">{detail.gst_percent}%</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Dates */}
-                  <div className="space-y-2.5">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contract Period</p>
-                    {[
-                      { label: "Start Date",    value: detail.start_date?.slice(0, 10) },
-                      { label: "End Date",      value: detail.end_date?.slice(0, 10) },
-                      { label: "Next Service",  value: detail.next_service_date?.slice(0, 10) },
-                      { label: "Renewal Alert", value: `${detail.renewal_reminder_days} days before expiry` },
-                    ].map(item => (
-                      <div key={item.label} className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{item.label}</span>
-                        <span className="text-xs font-semibold text-gray-800 dark:text-white">{item.value || "—"}</span>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Services */}
-                  {detail.services?.length > 0 && (
-                    <div>
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Services Covered</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {detail.services.map(s => (
-                          <span key={s} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2.5 py-1 rounded-full font-medium">{s}</span>
-                        ))}
+                      {amc.po_number && (
+                        <div className="mb-3">
+                          <span className="inline-flex items-center gap-1 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-2.5 py-1 rounded-full font-medium">
+                            <Package size={11} /> {amc.po_number}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+                          <p className="text-xs text-gray-400">Contract Value</p>
+                          <p className="font-bold text-blue-600 dark:text-blue-400 text-base">₹{Number(amc.value).toLocaleString()}</p>
+                        </div>
+                        <div className={`rounded-xl p-3 ${daysLeft < 60 && daysLeft > 0 ? "bg-orange-50 dark:bg-orange-900/20" : "bg-gray-50 dark:bg-gray-700/50"}`}>
+                          <p className="text-xs text-gray-400">Days Left</p>
+                          <p className={`font-bold text-base ${daysLeft < 60 && daysLeft > 0 ? "text-orange-600" : daysLeft <= 0 ? "text-red-500" : "text-gray-800 dark:text-gray-200"}`}>
+                            {daysLeft > 0 ? daysLeft : "Expired"}
+                          </p>
+                        </div>
                       </div>
+
+                      <div className="space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-2"><Calendar size={12} />{amc.start_date?.slice(0, 10)} → {amc.end_date?.slice(0, 10)}</div>
+                        {amc.last_service_date && <div className="flex items-center gap-2"><Clock size={12} />Last service: {amc.last_service_date.slice(0, 10)}</div>}
+                        {amc.next_service_date && <div className="flex items-center gap-2"><RefreshCw size={12} />Next service: {amc.next_service_date.slice(0, 10)}</div>}
+                        {amc.status === "Expiring Soon" && <div className="flex items-center gap-2 text-orange-500 font-semibold"><AlertTriangle size={12} /> Renewal: {amc.renewal_reminder_days}d before</div>}
+                      </div>
+
+                      {amc.services?.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                          <div className="flex flex-wrap gap-1">
+                            {amc.services.slice(0, 3).map(s => <span key={s} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full">{s}</span>)}
+                            {amc.services.length > 3 && <span className="text-xs text-gray-400">+{amc.services.length - 3} more</span>}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
-                  {/* Email reminders info */}
-                  <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3 space-y-1.5">
-                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Auto Email Reminders</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">✉️ Creation confirmation sent to client</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">⚠️ Renewal reminder {detail.renewal_reminder_days} days before expiry</p>
-                    {detail.next_service_date && <p className="text-xs text-gray-500 dark:text-gray-400">🔔 Service reminder 10 days before {detail.next_service_date?.slice(0, 10)}</p>}
-                  </div>
-
-                  {/* Actions */}
-                  {canEdit && (
-                    <div className="flex gap-2 pt-1">
-                      <Button className="flex-1" onClick={() => openEdit(detail)}>
-                        <Pencil size={14} className="mr-1.5" /> Edit
-                      </Button>
-                      <Button variant="danger" onClick={() => setDeleteId(detail.id)}>
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Create / Edit Modal */}
-        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editId ? "Edit AMC Contract" : "New AMC Contract"} size="lg">
+        {/* Create Modal (Add only — edit moved to detail page) */}
+        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="New AMC Contract" size="lg">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              {!editId && (
-                <ClientAutocomplete
-                  clients={clients}
-                  value={form.client_id}
-                  onChange={(id) => setForm(p => ({ ...p, client_id: id }))}
-                  required
-                  className="col-span-2"
-                />
-              )}
+              <ClientAutocomplete clients={clients} value={form.client_id} onChange={(id) => setForm(p => ({ ...p, client_id: id }))} required className="col-span-2" />
               <Input label="Contract Title" value={form.title} onChange={f("title")} required className="col-span-2" />
-              <Input
-                label="PO Number"
-                value={form.po_number}
-                onChange={f("po_number")}
-                placeholder="PO-2025-001"
-                className="col-span-2"
-              />
-              {!editId && <DatePicker label="Start Date" value={form.start_date} onChange={f("start_date")} required />}
-              <DatePicker label="End Date" value={form.end_date} onChange={f("end_date")} required={!editId} />
+              <Input label="PO Number" value={form.po_number} onChange={f("po_number")} placeholder="PO-2025-001" className="col-span-2" />
+              <DatePicker label="Start Date" value={form.start_date} onChange={f("start_date")} required />
+              <DatePicker label="End Date" value={form.end_date} onChange={f("end_date")} required />
+              <DatePicker label="Last Service Date" value={form.last_service_date} onChange={f("last_service_date")} />
               <DatePicker label="Next Service Date" value={form.next_service_date} onChange={f("next_service_date")} />
               <Select label="Renewal Reminder (days)" value={form.renewal_reminder_days} onChange={f("renewal_reminder_days")} className="col-span-2"
                 options={[{ value: 15, label: "15 days" }, { value: 30, label: "30 days" }, { value: 60, label: "60 days" }, { value: 90, label: "90 days" }]} />
               <div className="col-span-2">
-                <Input label="Services Covered (comma-separated)" value={form.services_raw} onChange={f("services_raw")}
-                  placeholder="HVAC Servicing, Filter Replacement, Emergency Support" />
+                <Input label="Services Covered (comma-separated)" value={form.services_raw} onChange={f("services_raw")} placeholder="HVAC Servicing, Filter Replacement, Emergency Support" />
               </div>
               <Input label="Visit Count" type="number" value={form.visit_count} onChange={f("visit_count")} />
               <Input label="Pumps Count" type="number" value={form.pumps_count} onChange={f("pumps_count")} />
@@ -669,18 +504,12 @@ export default function AMC() {
               <Input label="GST Percent" type="number" value={form.gst_percent} onChange={f("gst_percent")} />
               <Input label="Contract Value (₹)" type="number" value={form.value} readOnly className="col-span-2" required />
             </div>
-
-            {!editId && (
-              <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3">
-                <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">📧 Automatic Emails</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">On creation — confirmation email sent to the client. Renewal reminder and service reminders are sent automatically by the system.</p>
-              </div>
-            )}
-
+            <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-3">
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">📧 Automatic Emails</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">On creation — confirmation email sent to the client. Renewal reminder and service reminders are sent automatically by the system.</p>
+            </div>
             <div className="flex gap-3 pt-2">
-              <Button type="submit" className="flex-1" disabled={submitting}>
-                {submitting ? "Saving…" : (editId ? "Update AMC" : "Create AMC")}
-              </Button>
+              <Button type="submit" className="flex-1" disabled={submitting}>{submitting ? "Saving…" : "Create AMC"}</Button>
               <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
             </div>
           </form>

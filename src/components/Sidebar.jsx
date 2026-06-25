@@ -294,7 +294,7 @@ export function TopBar({ setSidebarOpen }) {
                         const isClickable = !!n.entity_type && ["job", "report", "amc"].includes(n.entity_type);
                         const handleClick = () => {
                           if (!n.read) markRead(n.id);
-                          const paths = { job: `/jobs/${n.entity_id}`, report: `/reports/${n.entity_id}`, amc: "/amc" };
+                          const paths = { job: `/jobs/${n.entity_id}`, report: `/reports/${n.entity_id}`, amc: `/amc/${n.entity_id}` };
                           const path  = isClickable ? paths[n.entity_type] : null;
                           if (path) { navigate(path); setShowNotifMenu(false); }
                         };

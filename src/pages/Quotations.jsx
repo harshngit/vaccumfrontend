@@ -69,7 +69,9 @@ export default function Quotations() {
       if (response.data.success) {
         const data = response.data.data || [];
         setErpQuotations(data);
-        setTotalCount(response.data.count || data.length);
+        const r = response.data;
+        const total = r.totalCount ?? r.total_count ?? r.total ?? r.count ?? r.pagination?.total;
+        setTotalCount(total != null ? total : (data.length === filters.limit ? (filters.page * filters.limit) + 1 : data.length));
       }
     } catch (error) {
       console.error("Error fetching ERP quotations:", error);
