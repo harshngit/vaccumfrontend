@@ -36,13 +36,16 @@ export default function Reports() {
 
   useEffect(() => { fetchReports(); }, [statusFilter]);
 
+  const isRestricted = ["technician", "engineer", "labour"].includes(currentUser?.role?.toLowerCase());
+
   const fetchReports = async () => {
     setLoading(true);
     try {
       const token  = localStorage.getItem("token");
       const params = { limit: 100 };
       if (statusFilter !== "All") params.status = statusFilter;
-      const res = await axios.get(`${API_BASE_URL}/reports`, {
+      const url = isRestricted ? `${API_BASE_URL}/reports/my` : `${API_BASE_URL}/reports`;
+      const res = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` }, params,
       });
       if (res.data.success) setReports(res.data.data || []);
