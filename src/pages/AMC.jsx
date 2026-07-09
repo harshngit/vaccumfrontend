@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, ShieldCheck, Calendar, RefreshCw, AlertTriangle,
-  X, Building2, DollarSign, Clock, ChevronRight,
-  Loader2, ExternalLink, Pencil, Trash2, Package, MapPin, Search, CheckCircle,
+  X, Building2, Clock,
+  Loader2, Pencil, Trash2, Package, MapPin, Search, CheckCircle,
   MoreVertical, Eye,
 } from "lucide-react";
 import axios from "axios";
@@ -16,42 +16,92 @@ import {
 
 const API_BASE_URL = "https://apivdti.asynk.in/api";
 
-function ClientAutocomplete({ clients, value, onChange, required, className = "" }) {
-  const [query, setQuery] = useState("");
-  const [focused, setFocused] = useState(false);
-  const ref = useRef();
+function ClientAutocomplete({ clients = [], value, onChange, required, className = "" }) {
+  const [open, setOpen]                     = useState(false);
+  const [inputValue, setInputValue]         = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [results, setResults]               = useState([]);
+  const [fetching, setFetching]             = useState(false);
+  const ref      = useRef();
   const inputRef = useRef();
 
+  // Sync input text when value is set externally (edit mode) and clients load
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setFocused(false); };
+    if (!value) { setInputValue(""); return; }
+    const known = clients.find(c => String(c.id) === String(value));
+    if (known) setInputValue(known.name);
+  }, [value, clients]);
+
+  // Click outside → close and restore display text to selected name
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        if (value) {
+          const known = [...clients, ...results].find(c => String(c.id) === String(value));
+          if (known) setInputValue(known.name);
+        } else {
+          setInputValue("");
+        }
+      }
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [value, clients, results]);
 
-  const selected = clients.find(c => c.id === value || String(c.id) === String(value));
-  const q = query.toLowerCase();
-  const filtered = q
-    ? clients.filter(c =>
-        c.name?.toLowerCase().includes(q) ||
-        c.address?.toLowerCase().includes(q) ||
-        c.contact_person?.toLowerCase().includes(q) ||
-        c.phone?.includes(query)
-      )
-    : clients;
+  // Debounce the input for API calls
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(inputValue), 350);
+    return () => clearTimeout(t);
+  }, [inputValue]);
+
+  // Call API when open (fires on open or when debouncedQuery changes)
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setFetching(true);
+      try {
+        const token = localStorage.getItem("token");
+        const params = { limit: 25 };
+        if (debouncedQuery.trim()) params.search = debouncedQuery.trim();
+        const res = await axios.get(`${API_BASE_URL}/clients`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params,
+        });
+        if (!cancelled && res.data.success) setResults(res.data.data || []);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [debouncedQuery, open]);
+
+  const handleFocus = () => setOpen(true);
+
+  const handleChange = (e) => {
+    setInputValue(e.target.value);
+    setOpen(true);
+    if (!e.target.value) onChange("");
+  };
 
   const handleSelect = (c) => {
     onChange(c.id);
-    setQuery(c.name);
-    setFocused(false);
+    setInputValue(c.name);
+    setOpen(false);
   };
 
-  const handleClear = () => {
+  const handleClear = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     onChange("");
-    setQuery("");
-    inputRef.current?.focus();
+    setInputValue("");
+    setResults([]);
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
-
-  const displayQuery = focused ? query : (selected ? selected.name : query);
 
   return (
     <div className={`relative ${className}`} ref={ref}>
@@ -59,47 +109,57 @@ function ClientAutocomplete({ clients, value, onChange, required, className = ""
         Client{required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      {/* Single input — the user types directly here */}
+      <div className={`relative flex items-center rounded-xl border transition-all ${
+        open
+          ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
+          : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+      }`}>
+        <Search size={14} className="absolute left-3 text-gray-400 pointer-events-none shrink-0" />
         <input
           ref={inputRef}
           type="text"
-          value={displayQuery}
-          onChange={(e) => { setQuery(e.target.value); setFocused(true); if (value) onChange(""); }}
-          onFocus={() => setFocused(true)}
-          placeholder="Type to search clients..."
-          className={`w-full pl-9 pr-9 py-2 rounded-xl border text-sm transition-all ${
-            focused
-              ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
-              : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
-          } text-gray-900 dark:text-gray-100 focus:outline-none`}
+          value={inputValue}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          placeholder="Search client…"
+          autoComplete="off"
+          className="w-full pl-9 pr-8 py-2 bg-transparent text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none"
         />
-        {(query || value) && (
-          <button type="button" onClick={handleClear} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+        {fetching ? (
+          <Loader2 size={13} className="absolute right-3 text-blue-400 animate-spin shrink-0" />
+        ) : (value || inputValue) ? (
+          <button type="button" onMouseDown={handleClear} className="absolute right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X size={14} />
           </button>
-        )}
+        ) : null}
       </div>
 
       <AnimatePresence>
-        {focused && (
+        {open && (
           <motion.div
             initial={{ opacity: 0, y: 4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.98 }}
-            transition={{ duration: 0.1 }}
-            className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+            transition={{ duration: 0.12 }}
+            className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
           >
-            <div className="max-h-64 overflow-y-auto py-1 custom-scrollbar">
-              {filtered.length === 0 ? (
-                <div className="px-4 py-4 text-sm text-gray-400 text-center">No clients found</div>
+            <div className="max-h-60 overflow-y-auto">
+              {fetching && results.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-gray-400 text-center flex items-center justify-center gap-2">
+                  <Loader2 size={14} className="animate-spin" /> Searching…
+                </div>
+              ) : results.length === 0 ? (
+                <div className="px-4 py-5 text-sm text-gray-400 text-center">
+                  {inputValue.trim() ? `No clients match "${inputValue}"` : "No clients found"}
+                </div>
               ) : (
-                filtered.map((c) => {
+                results.map((c) => {
                   const isSelected = String(c.id) === String(value);
                   return (
                     <div
                       key={c.id}
-                      onClick={() => handleSelect(c)}
+                      onMouseDown={() => handleSelect(c)}
                       className={`px-4 py-3 cursor-pointer transition-colors ${
                         isSelected
                           ? "bg-blue-50 dark:bg-blue-900/20"
@@ -108,7 +168,7 @@ function ClientAutocomplete({ clients, value, onChange, required, className = ""
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                             <Building2 size={14} className="text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="min-w-0">
@@ -117,12 +177,12 @@ function ClientAutocomplete({ clients, value, onChange, required, className = ""
                             </p>
                             {c.address && (
                               <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5">
-                                <MapPin size={10} className="flex-shrink-0" /> {c.address}
+                                <MapPin size={10} className="shrink-0" /> {c.address}
                               </p>
                             )}
                           </div>
                         </div>
-                        {isSelected && <CheckCircle size={14} className="text-blue-500 flex-shrink-0" />}
+                        {isSelected && <CheckCircle size={14} className="text-blue-500 shrink-0" />}
                       </div>
                     </div>
                   );
@@ -204,7 +264,8 @@ export default function AMC() {
   const [clients, setClients]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
-  const [search, setSearch] = useState("");
+  const [search, setSearch]             = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [modalOpen, setModalOpen]   = useState(false);
   const [editId, setEditId]         = useState(null);
@@ -214,8 +275,14 @@ export default function AMC() {
 
   const [deleteId, setDeleteId] = useState(null);
 
-  useEffect(() => { fetchContracts(); fetchClients(); }, []);
-  useEffect(() => { fetchContracts(); }, [statusFilter, search]);
+  // Debounce search — wait 400ms after the user stops typing before fetching
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => { fetchClients(); }, []);
+  useEffect(() => { fetchContracts(); }, [statusFilter, debouncedSearch]); // eslint-disable-line
 
   const fetchContracts = async () => {
     setLoading(true);
@@ -223,7 +290,7 @@ export default function AMC() {
       const token  = localStorage.getItem("token");
       const params = { limit: 100 };
       if (statusFilter !== "All") params.status = statusFilter;
-      if (search) params.search = search;
+      if (debouncedSearch)        params.search  = debouncedSearch;
       const res = await axios.get(`${API_BASE_URL}/amc`, {
         headers: { Authorization: `Bearer ${token}` }, params,
       });
@@ -240,9 +307,10 @@ export default function AMC() {
       const token = localStorage.getItem("token");
       const res   = await axios.get(`${API_BASE_URL}/clients`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 500 },
       });
       if (res.data.success) setClients(res.data.data || []);
-    } catch {}
+    } catch { /* silent — clients list is best-effort for edit-mode display */ }
   };
 
   const f = (field) => (e) => {
