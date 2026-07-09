@@ -14,7 +14,7 @@ import {
   Select, DatePicker, SectionHeader, EmptyState, useToast, Toast
 } from "../components/ui";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 function ClientAutocomplete({ clients = [], value, onChange, required, className = "" }) {
   const [open, setOpen]                     = useState(false);

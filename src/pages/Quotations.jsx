@@ -6,7 +6,7 @@ import { useApp } from "../context/AppContext";
 import { PageTransition, Card, Button, Input, Select, DatePicker, SectionHeader, EmptyState, useToast, Toast } from "../components/ui";
 import axios from "axios";
 
-const API_BASE_URL = "https://apivdti.asynk.in/api";
+const API_BASE_URL = "https://api.vdtil.com/api";
 
 const PRIORITY_COLORS = {
   High:   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
