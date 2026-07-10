@@ -172,7 +172,7 @@ export default function QuotationDetail() {
     setErrorInfo(null);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_BASE_URL}/erp/quotations/${id}`, {
+      const res = await axios.get(`${API_BASE_URL}/erp/local/quotations/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) {
