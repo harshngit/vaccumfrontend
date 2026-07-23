@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, UserCog, Briefcase, ClipboardList,
   FileText, DollarSign, Mail, ShieldCheck, Clock, LogOut,
-  ChevronRight, Menu, X, Search, Bell, HardHat,
+  ChevronRight, Menu, X, Search, Bell,
   User, Settings, Moon, Sun, CheckCheck, Trash2, Wifi, WifiOff,
   CalendarCheck
 } from "lucide-react";
+import logo from "../assets/logo.png";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../store/authSlice";
@@ -98,9 +99,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
         {/* Logo */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <HardHat size={18} className="text-white" />
-            </div>
+            <img src={logo} alt="VDTI" className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 flex-shrink-0" />
             <div>
               <p className="text-white font-bold text-sm leading-tight uppercase tracking-wider">VDTI</p>
               <p className="text-blue-400 text-[10px] uppercase tracking-widest font-semibold">Service Hub</p>
