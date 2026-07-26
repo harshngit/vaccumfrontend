@@ -24,12 +24,21 @@ function autoServiceDates(startDate, endDate, visitCount) {
   const end   = new Date(endDate);
   const totalMonths =
     (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-  const interval = Math.max(1, Math.round(totalMonths / visits));
   const result = {};
-  for (let i = 1; i <= Math.min(visits, 6); i++) {
+  if (visits === 1) {
+    // Single visit → place at midpoint of the contract period
     const d = new Date(start);
-    d.setMonth(d.getMonth() + interval * i);
-    result[`service_date_${i}`] = d.toISOString().slice(0, 10);
+    d.setMonth(d.getMonth() + Math.round(totalMonths / 2));
+    if (d > end) d.setTime(end.getTime());
+    result[`service_date_1`] = d.toISOString().slice(0, 10);
+  } else {
+    const interval = Math.max(1, Math.round(totalMonths / visits));
+    for (let i = 1; i <= Math.min(visits, 6); i++) {
+      const d = new Date(start);
+      d.setMonth(d.getMonth() + interval * i);
+      if (d > end) d.setTime(end.getTime()); // clamp to end date
+      result[`service_date_${i}`] = d.toISOString().slice(0, 10);
+    }
   }
   return result;
 }
