@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion"; // motion used as motion.div — ESLint false positive
+import { AnimatePresence } from "framer-motion"; // motion used as motion.div — ESLint false positive
 import {
   Plus, Briefcase, ArrowRight, Calendar, User, X,
   CheckCircle, Loader2, Upload, MoreVertical, Eye,
@@ -17,7 +17,7 @@ const API_BASE_URL = "https://api.vdtil.com/api";
 
 const STATUSES   = ["Raised", "Assigned", "In Progress", "Closed"];
 const PRIORITIES = ["Low", "Medium", "High", "Critical"];
-const CATEGORIES = ["Service", "AMC Visit", "Breakdown", "Installation & Commissioning", "Inspection"];
+const CATEGORIES = ["Service", "AMC Visit", "Breakdown", "Installation & Commissioning", "Inspection", "Workshop"];
 
 const STATUS_FLOW    = { Raised: "Assigned", Assigned: "In Progress", "In Progress": "Closed" };
 const ITEMS_PER_PAGE = 15;
