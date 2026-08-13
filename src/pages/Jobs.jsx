@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence } from "framer-motion"; // motion used as motion.div — ESLint false positive
+import { motion, AnimatePresence } from "framer-motion"; // motion used as motion.div — ESLint false positive
 import {
   Plus, Briefcase, ArrowRight, Calendar, User, X,
   CheckCircle, Loader2, Upload, MoreVertical, Eye,
