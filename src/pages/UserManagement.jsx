@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Users, UserPlus, Search, Edit2, Trash2, Shield, 
+import {
+  Users, UserPlus, Search, Edit2, Trash2, Shield,
   CheckCircle2, XCircle, X, Save,
-  Mail, Phone, Eye, EyeOff
+  Mail, Phone, Eye, EyeOff, KeyRound,
 } from "lucide-react";
 import axios from "axios";
 import { PageTransition, Card, Button, Input, Select, useToast, Toast } from "../components/ui";
@@ -29,6 +29,11 @@ export default function UserManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast, showToast }        = useToast();
+
+  const [pwdModal, setPwdModal]         = useState({ open: false, userId: null, userName: "" });
+  const [newPassword, setNewPassword]   = useState("");
+  const [showNewPwd, setShowNewPwd]     = useState(false);
+  const [changingPwd, setChangingPwd]   = useState(false);
 
   const [formData, setFormData] = useState({
     first_name:   "",
@@ -146,6 +151,31 @@ export default function UserManagement() {
     });
     setShowPassword(false);
     setShowModal(true);
+  };
+
+  const openPwdModal = (user) => {
+    setPwdModal({ open: true, userId: user.id, userName: `${user.first_name} ${user.last_name}` });
+    setNewPassword("");
+    setShowNewPwd(false);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+    setChangingPwd(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API_BASE_URL}/users/${pwdModal.userId}/password`,
+        { new_password: newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showToast("Password updated successfully!");
+      setPwdModal({ open: false, userId: null, userName: "" });
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update password", "error");
+    } finally {
+      setChangingPwd(false);
+    }
   };
 
   const filteredUsers = Array.isArray(users)
@@ -280,12 +310,21 @@ export default function UserManagement() {
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => openEditModal(user)}
+                          title="Edit user"
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
+                          onClick={() => openPwdModal(user)}
+                          title="Change password"
+                          className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
+                        >
+                          <KeyRound size={16} />
+                        </button>
+                        <button
                           onClick={() => handleDeactivate(user.id)}
+                          title="Deactivate user"
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                           disabled={!user.is_active}
                         >
@@ -453,6 +492,82 @@ export default function UserManagement() {
                     <Button type="submit" className="flex-1" disabled={submitting}>
                       <Save size={18} className="mr-2" />
                       {submitting ? "Saving…" : editingUser ? "Update User" : "Create User"}
+                    </Button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Change Password Modal */}
+        <AnimatePresence>
+          {pwdModal.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={() => !changingPwd && setPwdModal({ open: false, userId: null, userName: "" })}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-[32px] shadow-2xl overflow-hidden"
+              >
+                <div className="p-8 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Change Password</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{pwdModal.userName}</p>
+                  </div>
+                  <button onClick={() => !changingPwd && setPwdModal({ open: false, userId: null, userName: "" })}
+                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="p-8 space-y-5">
+                  <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl px-4 py-3">
+                    <KeyRound size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      No old password required. The new password will be set immediately and logged to the activity log.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      New Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showNewPwd ? "text" : "password"}
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        placeholder="Minimum 6 characters"
+                        required
+                        minLength={6}
+                        className="w-full px-5 py-3 pr-12 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPwd(p => !p)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"
+                      >
+                        {showNewPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400">Minimum 6 characters</p>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button type="button" variant="outline" className="flex-1"
+                      onClick={() => setPwdModal({ open: false, userId: null, userName: "" })}
+                      disabled={changingPwd}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={changingPwd}>
+                      <KeyRound size={16} className="mr-2" />
+                      {changingPwd ? "Updating…" : "Update Password"}
                     </Button>
                   </div>
                 </form>
