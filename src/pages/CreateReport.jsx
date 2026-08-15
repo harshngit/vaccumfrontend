@@ -10,9 +10,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp,
   Loader2, FileText, FileCheck, AlertCircle,
-  Paperclip, Upload, Image as ImageIcon,
+  Paperclip, Image as ImageIcon,
   X, CheckCircle, Mail, ClipboardList,
-  Wrench, AlertTriangle, Package, PenLine
+  Wrench, AlertTriangle, Package, PenLine, Camera
 } from "lucide-react";
 import axios from "axios";
 import {
@@ -144,11 +144,24 @@ export default function CreateReport() {
   const [techFiles, setTechFiles]           = useState([]);
   const [uploadingTech, setUploadingTech]   = useState(false);
   const [previewImages, setPreviewImages]   = useState([]);
-  const techRef = useRef();
-  const imgRef  = useRef();
+  const [attachPickerOpen, setAttachPickerOpen] = useState(false);
+  const techRef        = useRef();
+  const imgRef         = useRef();
+  const cameraRef      = useRef();
+  const attachPickerRef = useRef();
 
   useEffect(() => {
     fetchJobs(); fetchTechnicians(); fetchClients(); fetchAmcContracts();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (attachPickerRef.current && !attachPickerRef.current.contains(e.target)) {
+        setAttachPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   // Auto-fill client when job selected
@@ -768,32 +781,119 @@ export default function CreateReport() {
                   </div>
                 </Card>
 
-                {/* Technical Reports Upload */}
+                {/* Attachments — Documents + Photos unified */}
                 <Card className="p-6">
                   <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
-                    <FileText size={14} className="text-blue-500" /> Technical Reports
+                    <Paperclip size={14} className="text-gray-500" /> Attachments
                   </p>
-                  <p className="text-xs text-gray-400 mb-3">PDF, DOCX, XLSX, or any file type</p>
-                  <div onClick={() => techRef.current?.click()}
-                    className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4 text-center cursor-pointer hover:border-blue-400 transition group">
-                    <Upload size={20} className="mx-auto text-gray-300 dark:text-gray-500 mb-1 group-hover:text-blue-400 transition" />
-                    <p className="text-xs text-gray-400">Click to upload technical reports</p>
-                    <input ref={techRef} type="file" multiple className="hidden" onChange={handleTechFileSelect} />
+                  <p className="text-xs text-gray-400 mb-3">Documents, reports, or photos</p>
+
+                  {/* Upload trigger + action picker */}
+                  <div className="relative" ref={attachPickerRef}>
+                    <div onClick={() => setAttachPickerOpen(p => !p)}
+                      className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition group">
+                      <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-2 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition">
+                        <Plus size={18} className="text-gray-400 group-hover:text-blue-500 transition" />
+                      </div>
+                      <p className="text-xs text-gray-400 group-hover:text-blue-500 transition font-medium">Add attachment</p>
+                    </div>
+
+                    {/* Action sheet popup */}
+                    {attachPickerOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-xl z-30 overflow-hidden">
+                        <button type="button"
+                          onClick={() => { techRef.current?.click(); setAttachPickerOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition text-left">
+                          <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                            <FileText size={15} className="text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Upload Document</p>
+                            <p className="text-xs text-gray-400">PDF, DOCX, XLSX…</p>
+                          </div>
+                        </button>
+                        <div className="border-t border-gray-100 dark:border-gray-700" />
+                        <button type="button"
+                          onClick={() => { imgRef.current?.click(); setAttachPickerOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition text-left">
+                          <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                            <ImageIcon size={15} className="text-purple-600 dark:text-purple-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Upload Photo</p>
+                            <p className="text-xs text-gray-400">From gallery</p>
+                          </div>
+                        </button>
+                        <div className="border-t border-gray-100 dark:border-gray-700" />
+                        <button type="button"
+                          onClick={() => { cameraRef.current?.click(); setAttachPickerOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition text-left">
+                          <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                            <Camera size={15} className="text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Take Photo</p>
+                            <p className="text-xs text-gray-400">Opens camera</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Hidden inputs */}
+                  <input ref={techRef} type="file" multiple className="hidden" onChange={handleTechFileSelect} />
+                  <input ref={imgRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
+                  <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageSelect} />
+
+                  {/* Document list */}
                   {techFiles.length > 0 && (
                     <div className="space-y-2 mt-3">
                       {techFiles.map((file, idx) => (
                         <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                               {file.uploading ? <Loader2 size={14} className="animate-spin text-blue-600" /> : file.uploaded ? <CheckCircle size={14} className="text-emerald-600" /> : file.error ? <AlertCircle size={14} className="text-red-500" /> : <FileText size={14} className="text-blue-600" />}
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{file.name}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{file.name}</p>
                               <p className="text-xs text-gray-400">{file.uploading ? "Uploading..." : file.uploaded ? "Uploaded" : file.error || "Ready"}</p>
                             </div>
                           </div>
-                          {!file.uploading && <button type="button" onClick={() => removeTechFile(idx)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={14} /></button>}
+                          {!file.uploading && <button type="button" onClick={() => removeTechFile(idx)} className="text-red-400 hover:text-red-600 transition flex-shrink-0 ml-2"><Trash2 size={14} /></button>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Photo grid */}
+                  {previewImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-3 mt-3">
+                      {previewImages.map((img, idx) => (
+                        <div key={idx} className="relative group">
+                          <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700">
+                            <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                          </div>
+                          {img.uploading && (
+                            <div className="absolute inset-0 rounded-xl bg-black/50 flex items-center justify-center">
+                              <Loader2 size={20} className="animate-spin text-white" />
+                            </div>
+                          )}
+                          {img.uploaded_url && !img.uploading && (
+                            <div className="absolute bottom-1.5 right-1.5 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center shadow">
+                              <CheckCircle size={12} className="text-white" />
+                            </div>
+                          )}
+                          {img.error && (
+                            <div className="absolute inset-0 rounded-xl bg-red-500/20 flex items-center justify-center">
+                              <AlertCircle size={16} className="text-red-500" />
+                            </div>
+                          )}
+                          {!img.uploading && (
+                            <button type="button" onClick={() => removeImage(idx)}
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition">
+                              <X size={10} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
