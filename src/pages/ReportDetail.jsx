@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
-import { PageTransition, Badge, Button, Input, Textarea, useToast, Toast, Card } from "../components/ui";
+import { PageTransition, Badge, Button, useToast, Toast, Card } from "../components/ui";
 
 const API_BASE_URL = "https://api.vdtil.com/api";
 
@@ -38,9 +38,6 @@ export default function ReportDetail() {
   const [approving, setApproving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [editOpen, setEditOpen]     = useState(false);
-  const [editForm, setEditForm]     = useState({});
-  const [editing, setEditing]       = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting]     = useState(false);
 
@@ -113,40 +110,7 @@ export default function ReportDetail() {
     (role === "technician" && report.status === "Pending")
   );
 
-  const openEdit = () => {
-    setEditForm({
-      title:                      report.title || "",
-      report_date:                report.report_date?.slice(0, 10) || "",
-      location:                   report.location || "",
-      po_number:                  report.po_number || "",
-      contact_person:             report.contact_person || "",
-      remarks:                    report.remarks || "",
-      findings:                   report.findings || "",
-      recommendations:            report.recommendations || "",
-      comments:                   report.comments || "",
-      vdt_representative_name:    report.vdt_representative_name || "",
-      client_representative_name: report.client_representative_name || "",
-      checklist_items:            (report.checklist_items || []).map(item => ({ ...item })),
-    });
-    setEditOpen(true);
-  };
-
-  const handleEdit = async () => {
-    setEditing(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.put(`${API_BASE_URL}/reports/${id}`, editForm, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      showToast(res.data.message || "Report updated", "success");
-      setEditOpen(false);
-      fetchReport();
-    } catch (err) {
-      showToast(err.response?.data?.message || "Failed to update", "error");
-    } finally {
-      setEditing(false);
-    }
-  };
+  const openEdit = () => navigate(`/reports/${id}/edit`);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -405,25 +369,41 @@ export default function ReportDetail() {
 
 
 
-            {/* ── Technical Reports ───────────────────────────── */}
+            {/* ── Attachments (images + docs unified) ─────────── */}
             {report.technical_reports?.length > 0 && (
               <Card className="p-5">
-                <SectionLabel icon={FileText} label={`Technical Reports (${report.technical_reports.length})`} />
-                <div className="space-y-2 mt-4">
-                  {report.technical_reports.map(doc => (
-                    <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group">
-                      <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                        <FileText size={15} className="text-blue-600 dark:text-blue-400" />
+                <SectionLabel icon={FileText} label={`Attachments (${report.technical_reports.length})`} />
+                {/* Image grid */}
+                {report.technical_reports.filter(f => f.mime_type?.startsWith("image/")).length > 0 && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4">
+                    {report.technical_reports.filter(f => f.mime_type?.startsWith("image/")).map((img, i) => (
+                      <div key={i} onClick={() => setSelectedImage(img)} className="group cursor-pointer">
+                        <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition group-hover:ring-2 group-hover:ring-blue-500">
+                          <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
+                        </div>
+                        <p className="text-[10px] text-gray-400 truncate mt-1">{img.file_name}</p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{doc.file_name}</p>
-                        {doc.file_size_bytes && <p className="text-xs text-gray-400">{(doc.file_size_bytes / 1024).toFixed(0)} KB</p>}
-                      </div>
-                      <ExternalLink size={13} className="text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
-                    </a>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
+                {/* Document links */}
+                {report.technical_reports.filter(f => !f.mime_type?.startsWith("image/")).length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    {report.technical_reports.filter(f => !f.mime_type?.startsWith("image/")).map((doc, i) => (
+                      <a key={i} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                          <FileText size={15} className="text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">{doc.file_name}</p>
+                          {doc.file_size_bytes && <p className="text-xs text-gray-400">{(doc.file_size_bytes / 1024).toFixed(0)} KB</p>}
+                        </div>
+                        <ExternalLink size={13} className="text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </Card>
             )}
           </div>
@@ -503,8 +483,7 @@ export default function ReportDetail() {
                   { label: "Checklist Items",  value: report.checklist_items?.length ?? 0 },
                   { label: "Issues Recorded",  value: report.issue_observations?.length ?? 0 },
                   { label: "Mandatory Spares", value: report.mandatory_spares?.length ?? 0 },
-                  { label: "Photos",           value: report.images?.length ?? 0 },
-                  { label: "Tech Documents",   value: report.technical_reports?.length ?? 0 },
+                  { label: "Attachments",      value: report.technical_reports?.length ?? 0 },
                 ].map(item => (
                   <div key={item.label} className="flex items-center justify-between">
                     <span className="text-sm text-gray-500 dark:text-gray-400">{item.label}</span>
@@ -572,27 +551,6 @@ export default function ReportDetail() {
               </Card>
             )}
 
-            {/* ── Photos ──────────────────────────────────────── */}
-            <Card className="p-5">
-              <SectionLabel icon={ImageIcon} label={`Attached Photos${report.images?.length > 0 ? ` (${report.images.length})` : ""}`} />
-              {report.images?.length > 0 ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4">
-                  {report.images.map(img => (
-                    <div key={img.id} onClick={() => setSelectedImage(img)} className="group cursor-pointer">
-                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 hover:opacity-80 transition group-hover:ring-2 group-hover:ring-blue-500">
-                        <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
-                      </div>
-                      <p className="text-[10px] text-gray-400 truncate mt-1">{img.file_name}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-gray-300 dark:text-gray-600 mt-3">
-                  <ImageIcon size={28} className="mb-2 opacity-40" />
-                  <p className="text-sm">No photos attached</p>
-                </div>
-              )}
-            </Card>
           </div>
         </div>
       </div>
@@ -622,95 +580,6 @@ export default function ReportDetail() {
               </div>
               <div className="mt-4 text-center">
                 <p className="text-white font-medium">{selectedImage.file_name}</p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Edit Modal ────────────────────────────────────────── */}
-      <AnimatePresence>
-        {editOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
-              className="w-full sm:max-w-2xl bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
-
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-                <div>
-                  <p className="text-xs text-gray-400 font-mono">{report.id}</p>
-                  <p className="font-bold text-gray-900 dark:text-white">Edit Report</p>
-                </div>
-                <button onClick={() => setEditOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                  <X size={18} className="text-gray-500" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                {/* Basic Info */}
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Basic Info</p>
-                  <Input label="Title" value={editForm.title || ""} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input label="Report Date" type="date" value={editForm.report_date || ""} onChange={e => setEditForm(p => ({ ...p, report_date: e.target.value }))} />
-                    <Input label="Location" value={editForm.location || ""} onChange={e => setEditForm(p => ({ ...p, location: e.target.value }))} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input label="PO Number" value={editForm.po_number || ""} onChange={e => setEditForm(p => ({ ...p, po_number: e.target.value }))} />
-                    <Input label="Contact Person" value={editForm.contact_person || ""} onChange={e => setEditForm(p => ({ ...p, contact_person: e.target.value }))} />
-                  </div>
-                </div>
-
-                {/* Findings & Notes */}
-                <div className="space-y-3 border-t border-gray-100 dark:border-gray-800 pt-4">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Findings & Notes</p>
-                  <Textarea label="Findings" value={editForm.findings || ""} onChange={e => setEditForm(p => ({ ...p, findings: e.target.value }))} rows={3} placeholder="Describe what was found…" />
-                  <Textarea label="Recommendations" value={editForm.recommendations || ""} onChange={e => setEditForm(p => ({ ...p, recommendations: e.target.value }))} rows={2} placeholder="Suggested follow-up actions…" />
-                  <Textarea label="Remarks" value={editForm.remarks || ""} onChange={e => setEditForm(p => ({ ...p, remarks: e.target.value }))} rows={2} />
-                  <Textarea label="Comments" value={editForm.comments || ""} onChange={e => setEditForm(p => ({ ...p, comments: e.target.value }))} rows={2} />
-                </div>
-
-                {/* Checklist statuses */}
-                {editForm.checklist_items?.length > 0 && (
-                  <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Checklist Status</p>
-                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                      {editForm.checklist_items.map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                          <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0">
-                            {item.sr}
-                          </span>
-                          <p className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate min-w-0">{item.description}</p>
-                          <input
-                            value={item.status || ""}
-                            onChange={e => setEditForm(p => ({
-                              ...p,
-                              checklist_items: p.checklist_items.map((ci, j) => j === i ? { ...ci, status: e.target.value } : ci),
-                            }))}
-                            placeholder="OK / N/A"
-                            className="w-24 text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Signatures */}
-                <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-3">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Signatures</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input label="VDT Representative" value={editForm.vdt_representative_name || ""} onChange={e => setEditForm(p => ({ ...p, vdt_representative_name: e.target.value }))} />
-                    <Input label="Client Representative" value={editForm.client_representative_name || ""} onChange={e => setEditForm(p => ({ ...p, client_representative_name: e.target.value }))} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 flex-shrink-0">
-                <Button variant="secondary" className="flex-1" onClick={() => setEditOpen(false)} disabled={editing}>Cancel</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleEdit} disabled={editing}>
-                  {editing ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : <><CheckCircle size={14} /> Save Changes</>}
-                </Button>
               </div>
             </motion.div>
           </motion.div>

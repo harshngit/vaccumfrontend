@@ -230,7 +230,10 @@ export default function Reports() {
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-gray-400">
-                        <span>{r.technician_name || "—"} · {r.report_date ? r.report_date.slice(0, 10) : "—"}</span>
+                        <span>
+                          {r.technicians?.length > 0 ? r.technicians.map(t => t.name).join(", ") : r.technician_name || "—"}
+                          {" · "}{r.report_date ? r.report_date.slice(0, 10) : "—"}
+                        </span>
                         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                           {canApprove && r.status === "Pending" && (
                             <>
@@ -311,7 +314,7 @@ export default function Reports() {
                     {[
                       { label: "Job",         value: detailReport.job_id             || "—" },
                       { label: "Date",        value: detailReport.report_date ? detailReport.report_date.slice(0, 10) : "—" },
-                      { label: "Technician",  value: detailReport.technician_name    || "—" },
+                      { label: "Technician",  value: detailReport.technicians?.length > 0 ? detailReport.technicians.map(t => t.name).join(", ") : detailReport.technician_name || "—" },
                       { label: "Contact",     value: detailReport.contact_person     || detailReport.client_name || "—" },
                       { label: "Model/S/N",   value: detailReport.model_serial_installation || "—" },
                       { label: "Hrs/Day",     value: detailReport.operating_hours_per_day   || "—" },
@@ -407,15 +410,27 @@ export default function Reports() {
                     </div>
                   )}
 
-                  {/* Technical docs */}
+                  {/* Attachments (unified: images + docs) */}
                   {detailReport.technical_reports?.length > 0 && (
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                        Technical Reports ({detailReport.technical_reports.length})
+                        Attachments ({detailReport.technical_reports.length})
                       </p>
+                      {/* Image thumbnails */}
+                      {detailReport.technical_reports.filter(f => f.mime_type?.startsWith("image/")).length > 0 && (
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {detailReport.technical_reports.filter(f => f.mime_type?.startsWith("image/")).map((img, i) => (
+                            <a key={i} href={img.file_url} target="_blank" rel="noopener noreferrer"
+                              className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 block hover:opacity-90 transition">
+                              <img src={img.file_url} alt={img.file_name} className="w-full h-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                      {/* Document links */}
                       <div className="space-y-2">
-                        {detailReport.technical_reports.map(doc => (
-                          <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                        {detailReport.technical_reports.filter(f => !f.mime_type?.startsWith("image/")).map((doc, i) => (
+                          <a key={i} href={doc.file_url} target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition group">
                             <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                               <FileText size={13} className="text-blue-600 dark:text-blue-400" />
