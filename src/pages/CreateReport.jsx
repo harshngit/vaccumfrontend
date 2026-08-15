@@ -283,7 +283,7 @@ export default function CreateReport() {
     files.forEach(f => fd.append("files", f));
     try {
       const res = await axios.post(`${API_BASE_URL}/upload/report-files`, fd, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" }
+        headers: { Authorization: `Bearer ${token}` }
       });
       const uploaded = res.data.data || [];
       setTechFiles(prev => {
@@ -322,7 +322,7 @@ export default function CreateReport() {
     files.forEach(f => fd.append("files", f));
     try {
       const res = await axios.post(`${API_BASE_URL}/upload/report-files`, fd, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" }
+        headers: { Authorization: `Bearer ${token}` }
       });
       const uploaded = res.data.data || [];
       setPreviewImages(prev => {
@@ -352,8 +352,8 @@ export default function CreateReport() {
     return true;
   };
 
-  const nextStep = () => { if (validateStep()) setStep(s => Math.min(s + 1, 5)); };
-  const prevStep = () => setStep(s => Math.max(s - 1, 1));
+  const nextStep = () => { if (validateStep()) { setStep(s => Math.min(s + 1, 5)); window.scrollTo({ top: 0, behavior: "smooth" }); } };
+  const prevStep = () => { setStep(s => Math.max(s - 1, 1)); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   // ── Submit ────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -463,6 +463,25 @@ export default function CreateReport() {
               </div>
             );
           })}
+        </div>
+
+        {/* Mobile-only top navigation */}
+        <div className="flex items-center justify-between sm:hidden mb-4">
+          <Button variant="secondary" onClick={prevStep} disabled={step === 1}>
+            <ArrowLeft size={14} /> Previous
+          </Button>
+          {step < 5
+            ? <Button onClick={nextStep}>Next <ChevronDown size={14} className="rotate-[-90deg]" /></Button>
+            : (
+              <Button onClick={handleSubmit} disabled={submitting || uploadingTech}
+                className="bg-emerald-600 hover:bg-emerald-700 px-6">
+                {submitting
+                  ? <><Loader2 size={14} className="animate-spin" /> Submitting…</>
+                  : <><CheckCircle size={14} /> Submit</>
+                }
+              </Button>
+            )
+          }
         </div>
 
         {/* ── STEP 1: Client Info (PDF Page 1) ──────────────── */}

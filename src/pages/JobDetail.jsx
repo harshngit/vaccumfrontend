@@ -125,7 +125,7 @@ export default function JobDetail() {
       const uploadRes = await axios.post(
         `${API_BASE_URL}/upload?entity_type=job&entity_id=${id}`,
         fd,
-        { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       const up = uploadRes.data.data?.[0];
       if (!up) throw new Error("Empty upload");

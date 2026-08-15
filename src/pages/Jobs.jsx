@@ -563,7 +563,7 @@ export default function Jobs() {
       const fd = new FormData();
       fd.append("images", imgObj.file);
       const uploadRes = await axios.post(`${API_BASE_URL}/upload?entity_type=job&entity_id=${closingJob.id}`, fd, {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const uploaded = uploadRes.data.data?.[0];
       if (!uploaded) throw new Error("Upload response empty");
@@ -785,7 +785,7 @@ export default function Jobs() {
                                       label: "Cancel Job", icon: XCircle, danger: true,
                                       onClick: () => { setMenuOpen(null); setCancelJob(job); setCancelReason(""); setCancelModal(true); },
                                     }] : []),
-                                    ...(isAdmin && ["Raised", "Assigned"].includes(job.status) ? [{
+                                    ...(isAdmin && job.status !== "In Progress" ? [{
                                       label: "Delete", icon: Trash2, danger: true,
                                       onClick: () => handleDelete(job),
                                     }] : []),
