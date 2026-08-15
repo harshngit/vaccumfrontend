@@ -13,11 +13,11 @@ import {
   Image as ImageIcon, FileText, ClipboardList,
   ChevronRight, Clock, MapPin, Hash, Package,
   AlertTriangle, Wrench, Mail, PenLine, ExternalLink, Download,
-  X
+  X, Pencil, Trash2
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
-import { PageTransition, Badge, Button, useToast, Toast, Card } from "../components/ui";
+import { PageTransition, Badge, Button, Input, Textarea, useToast, Toast, Card } from "../components/ui";
 
 const API_BASE_URL = "https://api.vdtil.com/api";
 
@@ -38,6 +38,11 @@ export default function ReportDetail() {
   const [approving, setApproving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [editOpen, setEditOpen]     = useState(false);
+  const [editForm, setEditForm]     = useState({});
+  const [editing, setEditing]       = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting]     = useState(false);
 
   useEffect(() => { fetchReport(); }, [id]);
 
@@ -100,6 +105,64 @@ export default function ReportDetail() {
   };
 
   const canApprove = currentUser?.role === "admin";
+  const role = currentUser?.role?.toLowerCase();
+  const canEdit = report && report.status !== "Approved" &&
+    (["admin", "manager"].includes(role) || role === "technician");
+  const canDelete = report && (
+    (["admin", "manager"].includes(role) && report.status !== "Approved") ||
+    (role === "technician" && report.status === "Pending")
+  );
+
+  const openEdit = () => {
+    setEditForm({
+      title:                      report.title || "",
+      report_date:                report.report_date?.slice(0, 10) || "",
+      location:                   report.location || "",
+      po_number:                  report.po_number || "",
+      contact_person:             report.contact_person || "",
+      remarks:                    report.remarks || "",
+      findings:                   report.findings || "",
+      recommendations:            report.recommendations || "",
+      comments:                   report.comments || "",
+      vdt_representative_name:    report.vdt_representative_name || "",
+      client_representative_name: report.client_representative_name || "",
+      checklist_items:            (report.checklist_items || []).map(item => ({ ...item })),
+    });
+    setEditOpen(true);
+  };
+
+  const handleEdit = async () => {
+    setEditing(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.put(`${API_BASE_URL}/reports/${id}`, editForm, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showToast(res.data.message || "Report updated", "success");
+      setEditOpen(false);
+      fetchReport();
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to update", "error");
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_BASE_URL}/reports/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      showToast("Report deleted", "success");
+      navigate("/reports");
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to delete", "error");
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
 
   // ── Loading skeleton ─────────────────────────────────────
   if (loading) {
@@ -153,14 +216,21 @@ export default function ReportDetail() {
             </div>
           </div>
           
-          <Button 
-            onClick={handleDownloadPDF} 
-            disabled={downloading}
-            className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
-          >
-            {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            Download PDF
-          </Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canEdit && (
+              <Button onClick={openEdit} variant="secondary" className="hidden sm:flex items-center gap-2">
+                <Pencil size={15} /> Edit
+              </Button>
+            )}
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+            >
+              {downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              Download PDF
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -375,6 +445,22 @@ export default function ReportDetail() {
               )}
             </Card>
 
+            {/* Edit / Delete actions */}
+            {(canEdit || canDelete) && (
+              <Card className="p-4 space-y-2">
+                {canEdit && (
+                  <Button className="w-full" onClick={openEdit}>
+                    <Pencil size={14} /> Edit Report
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button className="w-full bg-red-600 hover:bg-red-700 text-white" onClick={() => setDeleteOpen(true)}>
+                    <Trash2 size={14} /> Delete Report
+                  </Button>
+                )}
+              </Card>
+            )}
+
             {/* Approve / Reject */}
             {canApprove && report.status === "Pending" && (
               <Card className="p-5">
@@ -536,6 +622,120 @@ export default function ReportDetail() {
               </div>
               <div className="mt-4 text-center">
                 <p className="text-white font-medium">{selectedImage.file_name}</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Edit Modal ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {editOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+              className="w-full sm:max-w-2xl bg-white dark:bg-gray-900 rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col">
+
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+                <div>
+                  <p className="text-xs text-gray-400 font-mono">{report.id}</p>
+                  <p className="font-bold text-gray-900 dark:text-white">Edit Report</p>
+                </div>
+                <button onClick={() => setEditOpen(false)} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                  <X size={18} className="text-gray-500" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                {/* Basic Info */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Basic Info</p>
+                  <Input label="Title" value={editForm.title || ""} onChange={e => setEditForm(p => ({ ...p, title: e.target.value }))} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="Report Date" type="date" value={editForm.report_date || ""} onChange={e => setEditForm(p => ({ ...p, report_date: e.target.value }))} />
+                    <Input label="Location" value={editForm.location || ""} onChange={e => setEditForm(p => ({ ...p, location: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="PO Number" value={editForm.po_number || ""} onChange={e => setEditForm(p => ({ ...p, po_number: e.target.value }))} />
+                    <Input label="Contact Person" value={editForm.contact_person || ""} onChange={e => setEditForm(p => ({ ...p, contact_person: e.target.value }))} />
+                  </div>
+                </div>
+
+                {/* Findings & Notes */}
+                <div className="space-y-3 border-t border-gray-100 dark:border-gray-800 pt-4">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Findings & Notes</p>
+                  <Textarea label="Findings" value={editForm.findings || ""} onChange={e => setEditForm(p => ({ ...p, findings: e.target.value }))} rows={3} placeholder="Describe what was found…" />
+                  <Textarea label="Recommendations" value={editForm.recommendations || ""} onChange={e => setEditForm(p => ({ ...p, recommendations: e.target.value }))} rows={2} placeholder="Suggested follow-up actions…" />
+                  <Textarea label="Remarks" value={editForm.remarks || ""} onChange={e => setEditForm(p => ({ ...p, remarks: e.target.value }))} rows={2} />
+                  <Textarea label="Comments" value={editForm.comments || ""} onChange={e => setEditForm(p => ({ ...p, comments: e.target.value }))} rows={2} />
+                </div>
+
+                {/* Checklist statuses */}
+                {editForm.checklist_items?.length > 0 && (
+                  <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Checklist Status</p>
+                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      {editForm.checklist_items.map((item, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                          <span className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                            {item.sr}
+                          </span>
+                          <p className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate min-w-0">{item.description}</p>
+                          <input
+                            value={item.status || ""}
+                            onChange={e => setEditForm(p => ({
+                              ...p,
+                              checklist_items: p.checklist_items.map((ci, j) => j === i ? { ...ci, status: e.target.value } : ci),
+                            }))}
+                            placeholder="OK / N/A"
+                            className="w-24 text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex-shrink-0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Signatures */}
+                <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-3">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Signatures</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="VDT Representative" value={editForm.vdt_representative_name || ""} onChange={e => setEditForm(p => ({ ...p, vdt_representative_name: e.target.value }))} />
+                    <Input label="Client Representative" value={editForm.client_representative_name || ""} onChange={e => setEditForm(p => ({ ...p, client_representative_name: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 flex-shrink-0">
+                <Button variant="secondary" className="flex-1" onClick={() => setEditOpen(false)} disabled={editing}>Cancel</Button>
+                <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleEdit} disabled={editing}>
+                  {editing ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : <><CheckCircle size={14} /> Save Changes</>}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Confirmation ───────────────────────────────── */}
+      <AnimatePresence>
+        {deleteOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[160] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={22} className="text-red-500" />
+              </div>
+              <h3 className="font-bold text-gray-900 dark:text-white text-center mb-1">Delete Report?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-5">
+                <span className="font-mono font-bold text-gray-700 dark:text-gray-300">{report.id}</span> will be permanently deleted. This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="secondary" className="flex-1" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+                <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? <><Loader2 size={14} className="animate-spin" /> Deleting…</> : <><Trash2 size={14} /> Delete</>}
+                </Button>
               </div>
             </motion.div>
           </motion.div>
