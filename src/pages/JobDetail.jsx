@@ -260,11 +260,23 @@ export default function JobDetail() {
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { icon: Building2, label: "Client",         value: job.client_name     || "—" },
-                  { icon: User,      label: "Technician",     value: job.technician_name || "Not Assigned" },
+                  {
+                    icon: User,
+                    label: job.technicians?.length > 1 ? "Technicians" : "Technician",
+                    value: job.technicians?.length > 0
+                      ? job.technicians.map(t => t.name).join(", ")
+                      : (job.technician_name || "Not Assigned"),
+                  },
                   { icon: DollarSign,label: "Amount",         value: `₹${Number(job.amount || 0).toLocaleString()}` },
                   { icon: Tag,       label: "Category",       value: job.category        || "—" },
                   { icon: Calendar,  label: "Raised",         value: job.raised_date     ? job.raised_date.slice(0, 10)     : "—" },
-                  { icon: Calendar,  label: "Scheduled",      value: job.scheduled_date  ? job.scheduled_date.slice(0, 10)  : "—" },
+                  {
+                    icon: Calendar,
+                    label: job.start_date ? "Date Range" : "Scheduled",
+                    value: job.start_date
+                      ? `${job.start_date.slice(0, 10)} → ${job.end_date?.slice(0, 10) ?? ""}`
+                      : (job.scheduled_date ? job.scheduled_date.slice(0, 10) : "—"),
+                  },
                   { icon: Calendar,  label: "Closed",         value: job.closed_date     ? job.closed_date.slice(0, 10)     : "—" },
                   { icon: AlertCircle,label: "Priority",      value: job.priority        || "—" },
                 ].map(item => (
