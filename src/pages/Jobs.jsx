@@ -549,9 +549,13 @@ export default function Jobs() {
   };
 
   const handleVerifyImageSelect = (e) => {
-    const files = Array.from(e.target.files);
-    setVerifyImages(p => [...p, ...files.map(file => ({ file, preview: URL.createObjectURL(file), uploading: false, uploaded_url: null, error: null }))]);
+    // Copy files into new File objects before clearing the input so the
+    // file data stays accessible when uploadVerifyImage runs later.
+    const files = Array.from(e.target.files).map(
+      f => new File([f], f.name, { type: f.type || "image/jpeg" })
+    );
     e.target.value = "";
+    setVerifyImages(p => [...p, ...files.map(file => ({ file, preview: URL.createObjectURL(file), uploading: false, uploaded_url: null, error: null }))]);
   };
 
   const removeVerifyImage = (idx) => setVerifyImages(p => p.filter((_, i) => i !== idx));

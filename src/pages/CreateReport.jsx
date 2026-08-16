@@ -309,17 +309,19 @@ export default function CreateReport() {
   const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
+    // Build FormData before clearing the input — some mobile browsers release
+    // the file reference when the input is reset, causing silent upload failures.
+    const fd = new FormData();
+    files.forEach(f => fd.append("files", new File([f], f.name, { type: f.type || "image/jpeg" })));
     e.target.value = "";
     const newEntries = files.map(file => ({
       file, preview: URL.createObjectURL(file),
       uploading: true, uploaded: false,
       file_name: null, file_url: null,
-      mime_type: file.type, file_size_bytes: file.size, error: null,
+      mime_type: file.type || "image/jpeg", file_size_bytes: file.size, error: null,
     }));
     setPreviewImages(p => [...p, ...newEntries]);
     const token = localStorage.getItem("token");
-    const fd = new FormData();
-    files.forEach(f => fd.append("files", f));
     try {
       const res = await axios.post(`${API_BASE_URL}/upload/report-files`, fd, {
         headers: { Authorization: `Bearer ${token}` }

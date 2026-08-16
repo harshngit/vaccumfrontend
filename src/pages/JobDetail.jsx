@@ -100,7 +100,10 @@ export default function JobDetail() {
 
   // ── Verification images ───────────────────────────────────
   const handleImageSelect = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files).map(
+      f => new File([f], f.name, { type: f.type || "image/jpeg" })
+    );
+    e.target.value = "";
     setVerifyImages(p => [
       ...p,
       ...files.map(file => ({
@@ -111,7 +114,6 @@ export default function JobDetail() {
         error:        null,
       })),
     ]);
-    e.target.value = "";
   };
 
   const removeImage = (idx) => setVerifyImages(p => p.filter((_, i) => i !== idx));
