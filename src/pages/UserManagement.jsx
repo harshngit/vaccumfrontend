@@ -24,6 +24,7 @@ export default function UserManagement() {
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading]       = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showModal, setShowModal]   = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -47,8 +48,13 @@ export default function UserManagement() {
     password:     "",
   });
 
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery); setCurrentPage(1); }, 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchUsers(currentPage); }, [currentPage]);
+  useEffect(() => { fetchUsers(currentPage, debouncedSearch); }, [currentPage, debouncedSearch]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -57,13 +63,13 @@ export default function UserManagement() {
     return () => document.removeEventListener("click", close);
   }, [openMenuId]);
 
-  const fetchUsers = async (page = 1) => {
+  const fetchUsers = async (page = 1, search = "") => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/users`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: 10 },
+        params: { page, limit: 10, ...(search ? { search } : {}) },
       });
       const { success, data, pagination } = response.data;
       if (success) {
@@ -120,7 +126,7 @@ export default function UserManagement() {
         showToast("User created successfully!");
       }
       setShowModal(false);
-      fetchUsers(currentPage);
+      fetchUsers(currentPage, debouncedSearch);
     } catch (error) {
       showToast(error.response?.data?.message || "Operation failed", "error");
     } finally {
@@ -136,7 +142,7 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast("User deactivated successfully!");
-      fetchUsers(currentPage);
+      fetchUsers(currentPage, debouncedSearch);
     } catch (error) {
       showToast(error.response?.data?.message || "Deactivation failed", "error");
     }
@@ -149,7 +155,7 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast("User reactivated successfully!");
-      fetchUsers(currentPage);
+      fetchUsers(currentPage, debouncedSearch);
     } catch (error) {
       showToast(error.response?.data?.message || "Reactivation failed", "error");
     }
@@ -163,7 +169,7 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast("User permanently deleted");
-      fetchUsers(currentPage);
+      fetchUsers(currentPage, debouncedSearch);
     } catch (error) {
       showToast(error.response?.data?.message || "Permanent delete failed", "error");
     }
@@ -216,12 +222,7 @@ export default function UserManagement() {
     }
   };
 
-  const filteredUsers = Array.isArray(users)
-    ? users.filter(u =>
-        `${u.first_name || ""} ${u.last_name || ""} ${u.email || ""}`.toLowerCase()
-          .includes(searchQuery.toLowerCase())
-      )
-    : [];
+  const filteredUsers = Array.isArray(users) ? users : [];
 
   const getRoleBadgeColor = (role) => {
     const colors = {
