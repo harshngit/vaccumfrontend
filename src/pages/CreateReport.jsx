@@ -342,9 +342,12 @@ export default function CreateReport() {
           return { ...entry, uploading: false, error: "Failed" };
         });
       });
-    } catch {
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message || err?.message || "Upload failed";
+      console.error("[upload/report-files]", status, err?.response?.data);
       setPreviewImages(prev => prev.map((e, i) => i >= prev.length - rawFiles.length ? { ...e, uploading: false, error: "Upload failed" } : e));
-      showToast("Failed to upload photos", "error");
+      showToast(`Failed to upload photos (${status ?? "network error"}: ${msg})`, "error");
     }
   };
   const removeImage = (idx) => setPreviewImages(p => p.filter((_, i) => i !== idx));
