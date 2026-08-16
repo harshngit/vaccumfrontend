@@ -969,7 +969,7 @@ export default function CreateReport() {
                           )}
                           {!img.uploading && (
                             <button type="button" onClick={() => removeImage(idx)}
-                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition">
+                              className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
                               <X size={10} />
                             </button>
                           )}
