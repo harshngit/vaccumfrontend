@@ -35,6 +35,7 @@ export default function UserManagement() {
   const [showNewPwd, setShowNewPwd]     = useState(false);
   const [changingPwd, setChangingPwd]   = useState(false);
   const [openMenuId, setOpenMenuId]     = useState(null);
+  const [currentPage, setCurrentPage]   = useState(1);
 
   const [formData, setFormData] = useState({
     first_name:   "",
@@ -46,7 +47,8 @@ export default function UserManagement() {
     password:     "",
   });
 
-  useEffect(() => { fetchUsers(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchUsers(currentPage); }, [currentPage]);
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -55,12 +57,13 @@ export default function UserManagement() {
     return () => document.removeEventListener("click", close);
   }, [openMenuId]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/users`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: 10 },
       });
       const { success, data, pagination } = response.data;
       if (success) {
@@ -117,7 +120,7 @@ export default function UserManagement() {
         showToast("User created successfully!");
       }
       setShowModal(false);
-      fetchUsers();
+      fetchUsers(currentPage);
     } catch (error) {
       showToast(error.response?.data?.message || "Operation failed", "error");
     } finally {
@@ -133,7 +136,7 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast("User deactivated successfully!");
-      fetchUsers();
+      fetchUsers(currentPage);
     } catch (error) {
       showToast(error.response?.data?.message || "Deactivation failed", "error");
     }
@@ -146,7 +149,7 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast("User reactivated successfully!");
-      fetchUsers();
+      fetchUsers(currentPage);
     } catch (error) {
       showToast(error.response?.data?.message || "Reactivation failed", "error");
     }
@@ -160,7 +163,7 @@ export default function UserManagement() {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast("User permanently deleted");
-      fetchUsers();
+      fetchUsers(currentPage);
     } catch (error) {
       showToast(error.response?.data?.message || "Permanent delete failed", "error");
     }
@@ -407,11 +410,11 @@ export default function UserManagement() {
           <div className="mt-4 flex items-center justify-between px-2 text-sm text-gray-500">
             <p>Showing {users.length} of {pagination.total} users</p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={pagination.page <= 1}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
               <div className="flex items-center px-3 font-medium text-gray-900 dark:text-white">
-                Page {pagination.page} of {pagination.total_pages}
+                Page {currentPage} of {pagination.total_pages}
               </div>
-              <Button variant="outline" size="sm" disabled={pagination.page >= pagination.total_pages}>Next</Button>
+              <Button variant="outline" size="sm" disabled={currentPage >= pagination.total_pages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
             </div>
           </div>
         )}
