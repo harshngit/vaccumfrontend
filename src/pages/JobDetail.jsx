@@ -99,9 +99,14 @@ export default function JobDetail() {
   };
 
   // ── Verification images ───────────────────────────────────
-  const handleImageSelect = (e) => {
-    const files = Array.from(e.target.files).map(
-      f => new File([f], f.name, { type: f.type || "image/jpeg" })
+  const handleImageSelect = async (e) => {
+    const rawFiles = Array.from(e.target.files);
+    if (!rawFiles.length) return;
+    const files = await Promise.all(
+      rawFiles.map(async f => {
+        const buf = await f.arrayBuffer();
+        return new File([buf], f.name, { type: f.type || "image/jpeg" });
+      })
     );
     e.target.value = "";
     setVerifyImages(p => [

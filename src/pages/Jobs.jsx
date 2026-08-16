@@ -548,11 +548,14 @@ export default function Jobs() {
     }
   };
 
-  const handleVerifyImageSelect = (e) => {
-    // Copy files into new File objects before clearing the input so the
-    // file data stays accessible when uploadVerifyImage runs later.
-    const files = Array.from(e.target.files).map(
-      f => new File([f], f.name, { type: f.type || "image/jpeg" })
+  const handleVerifyImageSelect = async (e) => {
+    const rawFiles = Array.from(e.target.files);
+    if (!rawFiles.length) return;
+    const files = await Promise.all(
+      rawFiles.map(async f => {
+        const buf = await f.arrayBuffer();
+        return new File([buf], f.name, { type: f.type || "image/jpeg" });
+      })
     );
     e.target.value = "";
     setVerifyImages(p => [...p, ...files.map(file => ({ file, preview: URL.createObjectURL(file), uploading: false, uploaded_url: null, error: null }))]);

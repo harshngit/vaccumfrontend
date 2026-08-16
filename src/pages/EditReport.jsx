@@ -315,18 +315,23 @@ export default function EditReport() {
 
   // ── Image helpers ─────────────────────────────────────────
   const handleImageSelect = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    const fd = new FormData();
-    files.forEach(f => fd.append("files", new File([f], f.name, { type: f.type || "image/jpeg" })));
-    e.target.value = "";
-    const newEntries = files.map(file => ({
+    const rawFiles = Array.from(e.target.files);
+    if (!rawFiles.length) return;
+    setPreviewImages(p => [...p, ...rawFiles.map(file => ({
       file, preview: URL.createObjectURL(file),
       uploading: true, uploaded: false,
       file_name: null, file_url: null,
       mime_type: file.type || "image/jpeg", file_size_bytes: file.size, error: null,
-    }));
-    setPreviewImages(p => [...p, ...newEntries]);
+    }))]);
+    const files = await Promise.all(
+      rawFiles.map(async f => {
+        const buf = await f.arrayBuffer();
+        return new File([buf], f.name, { type: f.type || "image/jpeg" });
+      })
+    );
+    e.target.value = "";
+    const fd = new FormData();
+    files.forEach(f => fd.append("files", f));
     const token = localStorage.getItem("token");
     try {
       const res = await axios.post(`${API_BASE_URL}/upload/report-files`, fd, {
@@ -334,7 +339,7 @@ export default function EditReport() {
       });
       const uploaded = res.data.data || [];
       setPreviewImages(prev => {
-        const startIdx = prev.length - files.length;
+        const startIdx = prev.length - rawFiles.length;
         return prev.map((entry, i) => {
           if (i < startIdx) return entry;
           const up = uploaded[i - startIdx];
@@ -343,7 +348,7 @@ export default function EditReport() {
         });
       });
     } catch {
-      setPreviewImages(prev => prev.map((e, i) => i >= prev.length - files.length ? { ...e, uploading: false, error: "Upload failed" } : e));
+      setPreviewImages(prev => prev.map((e, i) => i >= prev.length - rawFiles.length ? { ...e, uploading: false, error: "Upload failed" } : e));
       showToast("Failed to upload photos", "error");
     }
   };
