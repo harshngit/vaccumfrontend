@@ -173,9 +173,13 @@ function ActionMenu({ items, onClose }) {
   );
 }
 
-function MultiTechPicker({ technicians, value, onChange }) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+function MultiTechPicker({ value, onChange }) {
+  const [query, setQuery]               = useState("");
+  const [debouncedQuery, setDebouncedQ] = useState("");
+  const [results, setResults]           = useState([]);
+  const [fetching, setFetching]         = useState(false);
+  const [open, setOpen]                 = useState(false);
+  const [selectedTechs, setSelectedTechs] = useState([]);
   const containerRef = useRef();
   const inputRef = useRef();
 
@@ -185,21 +189,49 @@ function MultiTechPicker({ technicians, value, onChange }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setFetching(true);
+      try {
+        const token = localStorage.getItem("token");
+        const params = { limit: 25 };
+        if (debouncedQuery.trim()) params.search = debouncedQuery.trim();
+        const res = await axios.get(`${API_BASE_URL}/technicians`, {
+          headers: { Authorization: `Bearer ${token}` }, params,
+        });
+        if (!cancelled) setResults(res.data.data || res.data.technicians || []);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [debouncedQuery, open]);
+
   const selectedIds = value.map(String);
-  const selected = technicians.filter(t => selectedIds.includes(String(t.id)));
-  const q = query.toLowerCase();
-  const filtered = technicians.filter(t =>
-    !selectedIds.includes(String(t.id)) &&
-    (q === "" || t.name?.toLowerCase().includes(q) || t.phone?.includes(query))
-  );
+  const filtered = results.filter(t => !selectedIds.includes(String(t.id)));
 
   const add = (t) => {
     onChange([...value, String(t.id)]);
+    setSelectedTechs(prev => [...prev.filter(s => String(s.id) !== String(t.id)), t]);
     setQuery("");
     setOpen(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
-  const remove = (id) => onChange(value.filter(v => String(v) !== String(id)));
+  const remove = (id) => {
+    onChange(value.filter(v => String(v) !== String(id)));
+    setSelectedTechs(prev => prev.filter(s => String(s.id) !== String(id)));
+  };
+
+  const selectedDisplay = selectedTechs.filter(t => selectedIds.includes(String(t.id)));
 
   return (
     <div className="relative col-span-2" ref={containerRef}>
@@ -207,9 +239,9 @@ function MultiTechPicker({ technicians, value, onChange }) {
         Assign Technicians
       </label>
 
-      {selected.length > 0 && (
+      {selectedDisplay.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-1.5">
-          {selected.map(t => (
+          {selectedDisplay.map(t => (
             <span key={t.id} className="inline-flex items-center gap-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full font-medium">
               {t.name}
               <button type="button" onMouseDown={e => { e.preventDefault(); remove(t.id); }} className="hover:text-blue-900 dark:hover:text-blue-100 ml-0.5">
@@ -220,17 +252,22 @@ function MultiTechPicker({ technicians, value, onChange }) {
         </div>
       )}
 
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      <div className={`relative flex items-center rounded-xl border transition-all ${
+        open ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
+             : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+      }`}>
+        <Search size={14} className="absolute left-3 text-gray-400 pointer-events-none shrink-0" />
         <input
           ref={inputRef}
           type="text"
           value={query}
+          autoComplete="off"
           onChange={e => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           placeholder={value.length > 0 ? "Add more technicians…" : "Search and select technicians…"}
-          className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+          className="w-full pl-9 pr-8 py-2 bg-transparent text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none"
         />
+        {fetching && <Loader2 size={13} className="absolute right-3 text-blue-400 animate-spin shrink-0" />}
       </div>
 
       <AnimatePresence>
@@ -243,9 +280,11 @@ function MultiTechPicker({ technicians, value, onChange }) {
             className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
           >
             <div className="max-h-52 overflow-y-auto py-1">
-              {filtered.length === 0 ? (
+              {fetching && filtered.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-gray-400 text-center flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Searching…</div>
+              ) : filtered.length === 0 ? (
                 <p className="px-4 py-3 text-sm text-gray-400 text-center">
-                  {technicians.length === 0 ? "No technicians available" : "No more to add"}
+                  {query.trim() ? `No technicians match "${query}"` : "No technicians found"}
                 </p>
               ) : (
                 filtered.map(t => (
@@ -264,6 +303,116 @@ function MultiTechPicker({ technicians, value, onChange }) {
                   </div>
                 ))
               )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ClientSearch({ value, onChange, required }) {
+  const [query, setQuery]               = useState("");
+  const [results, setResults]           = useState([]);
+  const [fetching, setFetching]         = useState(false);
+  const [open, setOpen]                 = useState(false);
+  const [debouncedQuery, setDebouncedQ] = useState("");
+  const ref      = useRef();
+  const inputRef = useRef();
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setFetching(true);
+      try {
+        const token = localStorage.getItem("token");
+        const params = { limit: 25 };
+        if (debouncedQuery.trim()) params.search = debouncedQuery.trim();
+        const res = await axios.get(`${API_BASE_URL}/clients`, {
+          headers: { Authorization: `Bearer ${token}` }, params,
+        });
+        if (!cancelled && res.data.success) setResults(res.data.data || []);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [debouncedQuery, open]);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSelect = (c) => { onChange(c); setQuery(c.name); setOpen(false); };
+  const handleClear = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    onChange(null); setQuery(""); setResults([]); setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        Client{required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className={`relative flex items-center rounded-xl border transition-all ${
+        open ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
+             : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+      }`}>
+        <Search size={14} className="absolute left-3 text-gray-400 pointer-events-none shrink-0" />
+        <input ref={inputRef} type="text" value={query} autoComplete="off"
+          onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(null); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search clients…"
+          className="w-full pl-9 pr-8 py-2 bg-transparent text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none"
+        />
+        {fetching
+          ? <Loader2 size={13} className="absolute right-3 text-blue-400 animate-spin shrink-0" />
+          : (value || query)
+          ? <button type="button" onMouseDown={handleClear} className="absolute right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><X size={14} /></button>
+          : null
+        }
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }} transition={{ duration: 0.12 }}
+            className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="max-h-60 overflow-y-auto">
+              {fetching && results.length === 0
+                ? <div className="px-4 py-6 text-sm text-gray-400 text-center flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Searching…</div>
+                : results.length === 0
+                ? <div className="px-4 py-5 text-sm text-gray-400 text-center">{query.trim() ? `No clients match "${query}"` : "No clients found"}</div>
+                : results.map(c => {
+                    const isSelected = String(c.id) === String(value);
+                    return (
+                      <div key={c.id} onMouseDown={() => handleSelect(c)}
+                        className={`px-4 py-3 cursor-pointer transition-colors ${isSelected ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700/50"}`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                            <Building2 size={14} className="text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium truncate ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-gray-100"}`}>{c.name}</p>
+                            {c.address && <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5"><MapPin size={10} className="shrink-0" /> {c.address}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              }
             </div>
           </motion.div>
         )}
@@ -432,6 +581,9 @@ export default function Jobs() {
   const [cancelling, setCancelling] = useState(false);
   const [page, setPage]             = useState(1);
 
+  const [availability, setAvailability]   = useState(null);
+  const [checkingAvail, setCheckingAvail] = useState(false);
+
   // Export
   const [exportOpen, setExportOpen]       = useState(false);
   const [exporting, setExporting]         = useState(false);
@@ -448,6 +600,33 @@ export default function Jobs() {
 
   // Reset to page 1 whenever the active tab changes
   useEffect(() => { setPage(1); }, [filter]);
+
+  // Derive stable primitive keys — effect only re-runs when content actually changes
+  const _techIdsKey = form.technician_ids.join(",");
+  const _dateKey    = form.scheduled_date || form.start_date || "";
+
+  // Technician availability check
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!modalOpen || !_techIdsKey || !_dateKey) { setAvailability(null); return; }
+    let cancelled = false;
+    setCheckingAvail(true);
+    const timer = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(`${API_BASE_URL}/jobs/technician-availability`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { technician_ids: _techIdsKey, date: _dateKey },
+        });
+        if (!cancelled) setAvailability(res.data.success ? (res.data.technicians || []) : null);
+      } catch {
+        if (!cancelled) setAvailability(null);
+      } finally {
+        if (!cancelled) setCheckingAvail(false);
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [_techIdsKey, _dateKey, modalOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -516,6 +695,7 @@ export default function Jobs() {
       showToast("Visit scheduled!");
       setModalOpen(false);
       setForm(EMPTY_FORM);
+      setAvailability(null);
       fetchJobs();
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to raise job", "error");
@@ -897,17 +1077,47 @@ export default function Jobs() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Input label="Job Title" value={form.title} onChange={f("title")} required className="col-span-2" />
-              <AutocompleteInput
-                items={clients} value={form.client_id}
-                onChange={(id) => setForm(p => ({ ...p, client_id: id }))}
-                label="Client" required placeholder="Search clients..."
-                icon={Building2} subField="address"
+              <ClientSearch
+                value={form.client_id}
+                onChange={client => setForm(p => ({ ...p, client_id: client ? String(client.id) : "" }))}
+                required
               />
               <MultiTechPicker
-                technicians={technicians}
                 value={form.technician_ids}
                 onChange={(ids) => setForm(p => ({ ...p, technician_ids: ids }))}
               />
+
+              {/* Availability banner */}
+              {(checkingAvail || (availability && availability.length > 0)) && (
+                <div className="col-span-2 space-y-1.5">
+                  {checkingAvail ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-400 px-1">
+                      <Loader2 size={12} className="animate-spin" /> Checking availability for selected date…
+                    </div>
+                  ) : availability.map(t => (
+                    <div key={t.technician_id} className={`flex items-start gap-2.5 rounded-xl px-3 py-2.5 border ${
+                      t.is_available
+                        ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30"
+                        : "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30"
+                    }`}>
+                      <div className={`mt-0.5 shrink-0 ${t.is_available ? "text-emerald-500" : "text-red-500"}`}>
+                        {t.is_available ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-xs font-semibold ${t.is_available ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
+                          {t.technician_name} — {t.is_available ? "Available" : "Already assigned on this date"}
+                        </p>
+                        {t.conflicting_jobs.map(j => (
+                          <p key={j.job_id} className="text-[11px] text-red-500 dark:text-red-400 mt-0.5">
+                            {j.job_id}: {j.title} · {j.client_name} · {j.status}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Select label="Priority" value={form.priority} onChange={f("priority")} options={PRIORITIES} />
               <Select label="Category" value={form.category} onChange={f("category")} options={CATEGORIES} />
 

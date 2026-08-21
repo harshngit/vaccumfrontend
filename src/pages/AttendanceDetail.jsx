@@ -131,7 +131,7 @@ export default function AttendanceDetail() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7  xl mx-auto">
       {/* Back button */}
       <button
         onClick={() => navigate("/attendance")}

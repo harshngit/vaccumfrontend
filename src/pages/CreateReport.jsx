@@ -12,7 +12,8 @@ import {
   Loader2, FileText, FileCheck, AlertCircle,
   Paperclip, Image as ImageIcon,
   X, CheckCircle, Mail, ClipboardList,
-  Wrench, AlertTriangle, Package, PenLine, Camera
+  Wrench, AlertTriangle, Package, PenLine, Camera,
+  Search, Building2, MapPin,
 } from "lucide-react";
 import axios from "axios";
 import { useApp } from "../context/AppContext";
@@ -572,27 +573,29 @@ export default function CreateReport() {
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Client Info (PDF Page 1)</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Client</label>
                       {form.job_id ? (
-                        <div className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-semibold">
-                          {form.client_name || "Linked from job"}
-                        </div>
+                        <>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Client</label>
+                          <div className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-semibold">
+                            {form.client_name || "Linked from job"}
+                          </div>
+                        </>
                       ) : (
-                        <Select value={f("client_id")}
-                          onChange={e => {
-                            const clientId = e.target.value;
-                            const client = clients.find(cl => String(cl.id) === String(clientId));
+                        <ClientSearch
+                          value={form.client_id}
+                          onChange={client => {
+                            if (!client) { setForm(p => ({ ...p, client_id: "" })); return; }
                             setForm(p => ({
                               ...p,
-                              client_id: clientId,
-                              client_name: client?.name || "",
-                              client_email: client?.email || "",
-                              company_name: client?.name || "",
-                              contact_person: client?.contact_person || "",
-                              location: client?.address || ""
+                              client_id: String(client.id),
+                              client_name: client.name || "",
+                              client_email: client.email || "",
+                              company_name: client.name || "",
+                              contact_person: client.contact_person || "",
+                              location: client.address || "",
                             }));
                           }}
-                          options={[{ value: "", label: "Select client..." }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
+                          required
                         />
                       )}
                     </div>
@@ -1010,6 +1013,120 @@ export default function CreateReport() {
 }
 
 // ── Small helper component ────────────────────────────────────
+function ClientSearch({ value, onChange, required, initialName = "" }) {
+  const [query, setQuery]               = useState(initialName);
+  const [results, setResults]           = useState([]);
+  const [fetching, setFetching]         = useState(false);
+  const [open, setOpen]                 = useState(false);
+  const [debouncedQuery, setDebouncedQ] = useState(initialName);
+  const ref      = useRef();
+  const inputRef = useRef();
+
+  useEffect(() => { if (initialName && !query) setQuery(initialName); }, [initialName]); // eslint-disable-line
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setFetching(true);
+      try {
+        const token = localStorage.getItem("token");
+        const params = { limit: 25 };
+        if (debouncedQuery.trim()) params.search = debouncedQuery.trim();
+        const res = await axios.get(`${API_BASE_URL}/clients`, {
+          headers: { Authorization: `Bearer ${token}` }, params,
+        });
+        if (!cancelled && res.data.success) setResults(res.data.data || []);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [debouncedQuery, open]);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSelect = (c) => { onChange(c); setQuery(c.name); setOpen(false); };
+  const handleClear = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    onChange(null); setQuery(""); setResults([]); setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      {required !== undefined && (
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Client{required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+      )}
+      <div className={`relative flex items-center rounded-xl border transition-all ${
+        open ? "border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-gray-800"
+             : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
+      }`}>
+        <Search size={14} className="absolute left-3 text-gray-400 pointer-events-none shrink-0" />
+        <input ref={inputRef} type="text" value={query} autoComplete="off"
+          onChange={e => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(null); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search clients…"
+          className="w-full pl-9 pr-8 py-2 bg-transparent text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none"
+        />
+        {fetching
+          ? <Loader2 size={13} className="absolute right-3 text-blue-400 animate-spin shrink-0" />
+          : (value || query)
+          ? <button type="button" onMouseDown={handleClear} className="absolute right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><X size={14} /></button>
+          : null
+        }
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }} transition={{ duration: 0.12 }}
+            className="absolute z-[100] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="max-h-60 overflow-y-auto">
+              {fetching && results.length === 0
+                ? <div className="px-4 py-6 text-sm text-gray-400 text-center flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin" /> Searching…</div>
+                : results.length === 0
+                ? <div className="px-4 py-5 text-sm text-gray-400 text-center">{query.trim() ? `No clients match "${query}"` : "No clients found"}</div>
+                : results.map(c => {
+                    const isSelected = String(c.id) === String(value);
+                    return (
+                      <div key={c.id} onMouseDown={() => handleSelect(c)}
+                        className={`px-4 py-3 cursor-pointer transition-colors ${isSelected ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700/50"}`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                            <Building2 size={14} className="text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`text-sm font-medium truncate ${isSelected ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-gray-100"}`}>{c.name}</p>
+                            {c.address && <p className="text-xs text-gray-400 truncate flex items-center gap-1 mt-0.5"><MapPin size={10} className="shrink-0" /> {c.address}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              }
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function SectionTitle({ icon: Icon, label, color = "blue" }) {
   const colors = {
     blue:   "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
